@@ -1,0 +1,280 @@
+// prisma/schema.prisma
+// Sistema de Trazabilidad Bovina — Esquema de Base de Datos
+// REGLA CRÍTICA: No modificar la BD directamente. Usar únicamente `prisma migrate dev`.
+// Nota: SQLite no soporta enums nativos; se usan String con validación a nivel de aplicación (Zod).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENTIDADES CORE
+// ─────────────────────────────────────────────
+
+model Propietario {
+  id        Int       @id @default(autoincrement())
+  nombre    String
+  documento String    @unique
+  telefono  String?
+  email     String?   @unique
+  direccion String?
+  predios   Predio[]
+  usuarios  Usuario[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("propietarios")
+}
+
+model Predio {
+  id                 Int               @id @default(autoincrement())
+  nombre             String
+  codigo             String            @unique
+  municipio          String
+  departamento       String
+  area               Float?
+  propietarioId      Int
+  propietario        Propietario       @relation(fields: [propietarioId], references: [id])
+  animales           Animal[]
+  usuariosAsignados  Usuario[]         @relation("UsuariosPredios")
+  secuencias         SecuenciaPredio[]
+  movimientosOrigen  Movimiento[]      @relation("PredioOrigen")
+  movimientosDestino Movimiento[]      @relation("PredioDestino")
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  deletedAt          DateTime?
+
+  @@map("predios")
+}
+
+model SecuenciaPredio {
+  id         Int    @id @default(autoincrement())
+  predioId   Int
+  predio     Predio @relation(fields: [predioId], references: [id])
+  anio       String // "2026"
+  secuencial Int    @default(0)
+
+  @@unique([predioId, anio])
+  @@map("secuencias_predios")
+}
+
+model Usuario {
+  id                 Int               @id @default(autoincrement())
+  nombre             String
+  email              String            @unique
+  passwordHash       String
+  rol                String
+  propietarioId      Int?
+  propietario        Propietario?      @relation(fields: [propietarioId], references: [id])
+  prediosAsignados   Predio[]          @relation("UsuariosPredios")
+  activo             Boolean           @default(true)
+  sesiones           SesionUsuario[]
+  eventosCreados     EventoSanitario[] @relation("EventoCreador")
+  pesajesCreados     Pesaje[]          @relation("PesajeCreador")
+  movimientosCreados Movimiento[]
+  auditLogs          AuditLog[]
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  deletedAt          DateTime?
+
+  @@map("usuarios")
+}
+
+model SesionUsuario {
+  id           Int      @id @default(autoincrement())
+  usuarioId    Int
+  usuario      Usuario  @relation(fields: [usuarioId], references: [id])
+  refreshToken String   @unique
+  dispositivo  String?
+  ip           String?
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+
+  @@map("sesiones_usuarios")
+}
+
+model Animal {
+  id              Int       @id @default(autoincrement())
+  codigoVisual    String
+  cusa            String    @unique
+  nombre          String?
+  raza            String
+  sexo            String
+  fechaNacimiento DateTime?
+  pesoNacimiento  Float?
+  esToroCatalogo  Boolean   @default(false)
+  estado          String    @default("ACTIVO")
+  etapaActual     String    @default("CRIA")
+
+  isGestante Boolean @default(false)
+
+  predioId Int
+  predio   Predio @relation(fields: [predioId], references: [id])
+
+  madreId        Int?
+  madre          Animal?  @relation("AnimalMadre", fields: [madreId], references: [id])
+  hijosComoMadre Animal[] @relation("AnimalMadre")
+  padreId        Int?
+  padre          Animal?  @relation("AnimalPadre", fields: [padreId], references: [id])
+  hijosComoPadre Animal[] @relation("AnimalPadre")
+
+  historialEtapas      HistorialEtapa[]
+  eventosSanitarios    EventoSanitario[]
+  pesajes              Pesaje[]
+  movimientos          Movimiento[]
+  eventosReproductivos EventoReproductivo[] @relation("AnimalEvento")
+  partosComoMadre      EventoReproductivo[] @relation("MadreEvento")
+  nacimientosComoPadre EventoReproductivo[] @relation("PadreEvento")
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([codigoVisual, predioId, deletedAt])
+  @@index([predioId])
+  @@index([estado, sexo])
+  @@map("animales")
+}
+
+model HistorialEtapa {
+  id            Int      @id @default(autoincrement())
+  animalId      Int
+  animal        Animal   @relation(fields: [animalId], references: [id])
+  etapaAnterior String
+  etapaNueva    String
+  fecha         DateTime @default(now())
+  observaciones String?
+
+  @@map("historial_etapas")
+}
+
+// ─────────────────────────────────────────────
+// MÓDULO 2 — HISTORIAL CLÍNICO
+// ─────────────────────────────────────────────
+
+model EventoSanitario {
+  id                Int       @id @default(autoincrement())
+  animalId          Int
+  animal            Animal    @relation(fields: [animalId], references: [id])
+  tipo              String
+  fecha             DateTime
+  producto          String?
+  principioActivo   String?
+  dosis             String?
+  viaAdministracion String?
+  lote              String?
+  laboratorio       String?
+  periodoRetiro     Int       @default(0)
+  fechaFinRetiro    DateTime?
+  diagnostico       String?
+  observaciones     String?
+  creadoPorId       Int
+  creadoPor         Usuario   @relation("EventoCreador", fields: [creadoPorId], references: [id])
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([animalId])
+  @@index([fechaFinRetiro])
+  @@map("eventos_sanitarios")
+}
+
+// ─────────────────────────────────────────────
+// MÓDULO 3 — PRODUCTIVIDAD, REPRODUCCIÓN Y MOVIMIENTO
+// ─────────────────────────────────────────────
+
+model Pesaje {
+  id                  Int      @id @default(autoincrement())
+  animalId            Int
+  animal              Animal   @relation(fields: [animalId], references: [id])
+  tipoPesaje          String?  // Ej: NACIMIENTO, DESTETE, ANO, CONTROL_RUTINA
+  metodoMedicion      String?  // Ej: BASCULA, CINTA_BOVINOMETRICA, CINTA_ZOOMETRICA
+  fecha               DateTime
+  peso                Float
+  perimetroToracico   Float?
+  longitudCorporal    Float?
+  condicionCorporal   Float?
+  pesoDesteteAjustado Float?
+  pesoAnioAjustado    Float?
+  operarioId          Int
+  operario            Usuario  @relation("PesajeCreador", fields: [operarioId], references: [id])
+  observaciones       String?
+  createdAt           DateTime @default(now())
+
+  @@index([animalId, fecha])
+  @@map("pesajes")
+}
+
+model EventoReproductivo {
+  id            Int      @id @default(autoincrement())
+  animalId      Int
+  animal        Animal   @relation("AnimalEvento", fields: [animalId], references: [id])
+  tipo          String
+  fecha         DateTime
+  madreId       Int?
+  madre         Animal?  @relation("MadreEvento", fields: [madreId], references: [id])
+  padreId       Int?
+  padre         Animal?  @relation("PadreEvento", fields: [padreId], references: [id])
+  terneroId     Int?
+  diasGestacion Int?
+  resultado     String?
+  observaciones String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([animalId])
+  @@index([madreId])
+  @@index([padreId])
+  @@map("eventos_reproductivos")
+}
+
+model Movimiento {
+  id              Int      @id @default(autoincrement())
+  animalId        Int
+  animal          Animal   @relation(fields: [animalId], references: [id])
+  tipo            String
+  fecha           DateTime
+  predioOrigenId  Int?
+  predioOrigen    Predio?  @relation("PredioOrigen", fields: [predioOrigenId], references: [id])
+  predioDestinoId Int?
+  predioDestino   Predio?  @relation("PredioDestino", fields: [predioDestinoId], references: [id])
+  numeroGuia      String?
+  motivoEgreso    String?
+  pesoMovimiento  Float?
+  transportista   String?
+  cedulaChofer    String?
+  placaVehiculo   String?
+  ruta            String?
+  creadoPorId     Int
+  creadoPor       Usuario  @relation(fields: [creadoPorId], references: [id])
+  observaciones   String?
+  createdAt       DateTime @default(now())
+
+  @@index([animalId])
+  @@index([predioOrigenId])
+  @@index([predioDestinoId])
+  @@map("movimientos")
+}
+
+// ─────────────────────────────────────────────
+// AUDITORÍA
+// ─────────────────────────────────────────────
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  usuarioId Int
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
+  accion    String
+  entidad   String
+  entidadId Int?
+  datos     String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@map("audit_logs")
+}
