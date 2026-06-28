@@ -350,10 +350,54 @@ export default function AnimalProfile() {
                    </div>
                  </div>
 
-                 {/* Historial en Timeline */}
+                 {/* Historial Detallado */}
                  <div>
                    <h3 className="text-lg font-bold text-gray-950 mb-4">Historial de Registros</h3>
-                   <Timeline events={lineaDeTiempo.filter(e => e.tipo === 'PESAJE')} />
+                   <div className="grid grid-cols-1 gap-4">
+                     {pesajes.map((p: any, idx: number) => {
+                        const gananciaAnterior = pesajes[idx + 1] ? (p.peso - pesajes[idx + 1].peso).toFixed(2) : null;
+                        const isDestete = p.tipoPesaje === 'DESTETE';
+                        const metodoFormat = p.metodoMedicion ? p.metodoMedicion.replace('_', ' ') : 'BASCULA';
+
+                        return (
+                          <div key={p.id} className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
+                            <div className="flex items-center gap-4">
+                              <div className="bg-emerald-50 text-emerald-600 p-3 rounded-full flex-shrink-0">
+                                <Scale className="w-6 h-6" />
+                              </div>
+                              <div>
+                                <p className="text-sm text-gray-500 font-medium">{new Date(p.fecha).toLocaleDateString()}</p>
+                                <div className="flex items-baseline gap-2">
+                                  <span className="text-2xl font-semibold text-gray-950">{p.peso} kg</span>
+                                  {gananciaAnterior && (
+                                    <span className={`text-sm font-medium ${Number(gananciaAnterior) > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                      ({Number(gananciaAnterior) > 0 ? '+' : ''}{gananciaAnterior} kg)
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex flex-col sm:items-end text-sm space-y-1">
+                              <div className="flex flex-wrap gap-2 mb-1">
+                                <span className="bg-gray-100 text-gray-900 px-2.5 py-0.5 rounded-md font-semibold text-xs border border-gray-200">
+                                  {metodoFormat}
+                                </span>
+                                {isDestete && (
+                                  <span className="bg-yellow-100 text-yellow-900 px-2.5 py-0.5 rounded-md font-semibold text-xs border border-yellow-200">
+                                    DESTETE
+                                  </span>
+                                )}
+                              </div>
+                              {p.metodoMedicion === 'CINTA_ZOOMETRICA' && (
+                                <p className="text-gray-600 text-xs font-medium">PT: {p.perimetroToracico} cm | LC: {p.longitudCorporal} cm</p>
+                              )}
+                              {p.condicionCorporal && <p className="text-gray-600 text-xs font-medium">Condición Corporal: {p.condicionCorporal}</p>}
+                              {p.observaciones && <p className="text-gray-500 text-xs mt-1 max-w-sm sm:text-right italic">"{p.observaciones}"</p>}
+                            </div>
+                          </div>
+                        );
+                     })}
+                   </div>
                  </div>
                </div>
              )}
