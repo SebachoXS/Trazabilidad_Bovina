@@ -66,15 +66,15 @@ export default function AnimalProfile() {
   // Edad
   const calcularEdadDias = (fecha: string) => (new Date().getTime() - new Date(fecha).getTime()) / (1000 * 60 * 60 * 24);
   const edadDias = animal.fechaNacimiento ? calcularEdadDias(animal.fechaNacimiento) : 0;
-  const edadMeses = edadDias > 0 ? (edadDias / 30.44).toFixed(1) : (estadisticas?.edadMeses ?? animal?.edad?.meses ?? 'N/A');
+  const edadMeses = edadDias > 0 ? (edadDias / 30.44).toFixed(2) : (estadisticas?.edadMeses ? Number(estadisticas.edadMeses).toFixed(2) : animal?.edad?.meses ? Number(animal.edad.meses).toFixed(2) : 'N/A');
 
   // GDP Dinámico (último periodo)
-  let gdpReal = estadisticas?.gananciaDiariaPromedio ?? resumenProductivo?.gdpPromedio ?? 'N/A';
+  let gdpReal = estadisticas?.gananciaDiariaPromedio ? Number(estadisticas.gananciaDiariaPromedio).toFixed(2) : resumenProductivo?.gdpPromedio ? Number(resumenProductivo.gdpPromedio).toFixed(2) : 'N/A';
   if (pesajes.length >= 2) {
     const p1 = pesajes[0];
     const p2 = pesajes[1];
     const dias = (new Date(p1.fecha).getTime() - new Date(p2.fecha).getTime()) / (1000 * 60 * 60 * 24);
-    if (dias > 0) gdpReal = ((p1.peso - p2.peso) / dias).toFixed(3);
+    if (dias > 0) gdpReal = ((p1.peso - p2.peso) / dias).toFixed(2);
   }
 
   // Peso Ajustado 205 (Destete)
@@ -83,7 +83,7 @@ export default function AnimalProfile() {
   if (destete && animal.fechaNacimiento) {
     const diasAlDestete = (new Date(destete.fecha).getTime() - new Date(animal.fechaNacimiento).getTime()) / (1000 * 60 * 60 * 24);
     if (diasAlDestete > 0) {
-      p205 = (((destete.peso - pesoNacer) / diasAlDestete) * 205 + pesoNacer).toFixed(1);
+      p205 = (((destete.peso - pesoNacer) / diasAlDestete) * 205 + pesoNacer).toFixed(2);
     }
   }
 
@@ -93,7 +93,7 @@ export default function AnimalProfile() {
   if (ultimoPesaje && animal.fechaNacimiento) {
     const diasAlPesaje = (new Date(ultimoPesaje.fecha).getTime() - new Date(animal.fechaNacimiento).getTime()) / (1000 * 60 * 60 * 24);
     if (diasAlPesaje > 0) {
-      p365 = (((ultimoPesaje.peso - pesoNacer) / diasAlPesaje) * 365 + pesoNacer).toFixed(1);
+      p365 = (((ultimoPesaje.peso - pesoNacer) / diasAlPesaje) * 365 + pesoNacer).toFixed(2);
     }
   }
 
@@ -257,37 +257,46 @@ export default function AnimalProfile() {
       <div className="glass-panel rounded-2xl p-6 min-h-[400px]">
         {activeTab === 'identificacion' && (
           <div className="animate-fade-in space-y-6">
-            <h2 className="text-xl font-bold text-white mb-4">Información General</h2>
+            <h2 className="text-xl font-bold text-gray-950 mb-4">Ficha Técnica General</h2>
+            
             {(animal.padre || animal.madre) && (
-              <div className="bg-indigo-500/10 border border-indigo-500/20 p-5 rounded-xl flex flex-col sm:flex-row items-center gap-6">
-                <div className="bg-indigo-500/20 p-3 rounded-full shadow-[0_0_15px_rgba(99,102,241,0.2)]">
-                  <Dna className="w-8 h-8 text-indigo-400" />
+              <div className="bg-indigo-50 border border-indigo-100 p-5 rounded-xl flex flex-col sm:flex-row items-center gap-6 shadow-sm">
+                <div className="bg-indigo-100 p-3 rounded-full text-indigo-600">
+                  <Dna className="w-8 h-8" />
                 </div>
                 <div className="flex-1 flex gap-12 w-full justify-around sm:justify-start">
                   {animal.padre && (
                     <div className="text-center sm:text-left">
-                      <p className="text-xs text-indigo-300 font-semibold uppercase tracking-wider mb-1">Padre</p>
-                      <p className="font-mono font-bold text-lg text-indigo-100">{animal.padre.codigoVisual}</p>
+                      <p className="text-xs text-indigo-700 font-bold uppercase tracking-wider mb-1">Padre</p>
+                      <p className="font-mono font-bold text-lg text-gray-950">{animal.padre.codigoVisual}</p>
                     </div>
                   )}
                   {animal.madre && (
                     <div className="text-center sm:text-left">
-                      <p className="text-xs text-indigo-300 font-semibold uppercase tracking-wider mb-1">Madre</p>
-                      <p className="font-mono font-bold text-lg text-indigo-100">{animal.madre.codigoVisual}</p>
+                      <p className="text-xs text-indigo-700 font-bold uppercase tracking-wider mb-1">Madre</p>
+                      <p className="font-mono font-bold text-lg text-gray-950">{animal.madre.codigoVisual}</p>
                     </div>
                   )}
                 </div>
               </div>
             )}
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
-              <div className="bg-white/5 p-4 rounded-xl">
-                <p className="text-sm text-[var(--text-muted)]">Fecha de Nacimiento</p>
-                <p className="text-lg font-medium text-white">{animal.fechaNacimiento ? new Date(animal.fechaNacimiento).toLocaleDateString() : 'Desconocida'}</p>
+            <div className="grid grid-cols-1 md:grid-cols-4 sm:grid-cols-2 gap-6 mt-6">
+              <div className="bg-white border border-gray-200 p-5 rounded-xl shadow-sm">
+                <p className="text-sm text-gray-500 font-medium">Fecha de Nacimiento</p>
+                <p className="text-lg font-bold text-gray-950 mt-1">{animal.fechaNacimiento ? new Date(animal.fechaNacimiento).toLocaleDateString() : 'Desconocida'}</p>
               </div>
-              <div className="bg-white/5 p-4 rounded-xl">
-                <p className="text-sm text-[var(--text-muted)]">Etapa Productiva</p>
-                <p className="text-lg font-medium text-white">{animal.etapaActual}</p>
+              <div className="bg-white border border-gray-200 p-5 rounded-xl shadow-sm">
+                <p className="text-sm text-gray-500 font-medium">Etapa Productiva</p>
+                <p className="text-lg font-bold text-gray-950 mt-1">{animal.etapaActual || 'No definida'}</p>
+              </div>
+              <div className="bg-white border border-gray-200 p-5 rounded-xl shadow-sm">
+                <p className="text-sm text-gray-500 font-medium">Finca / Predio</p>
+                <p className="text-lg font-bold text-gray-950 mt-1">{animal.predio?.nombre || 'Desconocida'}</p>
+              </div>
+              <div className="bg-white border border-gray-200 p-5 rounded-xl shadow-sm">
+                <p className="text-sm text-gray-500 font-medium">Peso al Nacer</p>
+                <p className="text-lg font-bold text-gray-950 mt-1">{Number(pesoNacer).toFixed(2)} kg</p>
               </div>
             </div>
           </div>
