@@ -51,9 +51,9 @@ export function GlobalFilters() {
   // Lógica para VETERINARIO/OPERARIO con 1 solo predio
   if (isOperativo && predios.length === 1) {
     return (
-      <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full text-sm font-medium text-[var(--text-muted)]">
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium text-gray-700">
         <MapPin className="w-4 h-4 text-primary" />
-        Finca Actual: <span className="text-white">{predios[0]?.nombre}</span>
+        Finca Actual: <span className="text-gray-900 font-bold">{predios[0]?.nombre}</span>
       </div>
     );
   }
@@ -90,6 +90,21 @@ export function GlobalFilters() {
             ))}
           </select>
         </div>
+      )}
+
+      {user?.rol === 'VETERINARIO' && (
+        <button
+          onClick={() => {
+            // Forzamos el estado como si no tuviera predios para que Dashboard muestre el Lobby
+            // O simplemente navegamos a una ruta de lobby (si existiera). 
+            // Para mantenerlo simple, usaremos un modal o redirigimos.
+            window.dispatchEvent(new CustomEvent('open-lobby-veterinario'));
+          }}
+          className="ml-2 px-3 py-1.5 bg-emerald-100 text-emerald-800 text-sm font-medium rounded-md hover:bg-emerald-200 transition-colors flex items-center"
+        >
+          <Building2 className="w-4 h-4 mr-1.5" />
+          Nueva Finca
+        </button>
       )}
     </div>
   );

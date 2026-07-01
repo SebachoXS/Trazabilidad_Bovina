@@ -9,10 +9,10 @@ import { Loader2, Truck, Printer, MapPin, ClipboardList, CheckCircle2, ChevronRi
 import { Input } from '../../../components/ui/Input';
 import { Select } from '../../../components/ui/Select';
 import { Textarea } from '../../../components/ui/Textarea';
-import { GuiaImprimible } from './GuiaImprimible';
 import toast from 'react-hot-toast';
-import { useReactToPrint } from 'react-to-print';
 import { TransferList } from './TransferList';
+import { generateCSMIPdf } from '../utils/generateCSMIPdf';
+import { useGlobalContext } from '../../../store/globalContextStore';
 
 const guiaSchema = z.object({
   tipo: z.enum(['TRASLADO_INTERNO', 'TRASLADO_EXTERNO', 'CAMBIO_PROPIETARIO', 'EGRESO_SACRIFICIO']),
@@ -28,18 +28,15 @@ const guiaSchema = z.object({
 
 type GuiaFormValues = z.infer<typeof guiaSchema>;
 
-export const GuiaMovilizacionForm = ({ animalsData, isLoadingData, isErrorData }: { animalsData: any[], isLoadingData?: boolean, isErrorData?: boolean }) => {
+export const GuiaMovilizacionForm = ({ animalsData, isLoadingData, isErrorData, onSuccess }: { animalsData: any[], isLoadingData?: boolean, isErrorData?: boolean, onSuccess?: () => void }) => {
   const { data: prediosRes, isLoading: prediosLoading } = useQuery({ queryKey: ['predios'], queryFn: () => adminService.getPredios() });
   const predios = prediosRes?.data || [];
   
-  const { mutateAsync, isPending } = useCreateBatchMovement();
-  const [printData, setPrintData] = useState<any>(null);
+  const { selectedPredioId } = useGlobalContext();
+  const predioOrigenName = predios.find((p: any) => p.id === Number(selectedPredioId))?.nombre || 'Todas las Fincas (Global)';
+  const fincasDestino = predios.filter((p: any) => p.id !== Number(selectedPredioId));
   
-  const printRef = useRef<HTMLDivElement>(null);
-  const handlePrint = useReactToPrint({
-    content: () => printRef.current,
-    documentTitle: 'Certificado_Zoosanitario_Movilizacion',
-  });
+  const { mutateAsync, isPending } = useCreateBatchMovement();
 
   const [step, setStep] = useState(1);
   const [selectedAnimals, setSelectedAnimals] = useState<Set<number>>(new Set());
@@ -85,6 +82,11 @@ export const GuiaMovilizacionForm = ({ animalsData, isLoadingData, isErrorData }
       cleanData.predioDestinoId = parseInt(cleanData.predioDestinoId, 10);
     }
     
+    // Inyectar predioOrigenId si está trabajando bajo un contexto
+    if (selectedPredioId) {
+      cleanData.predioOrigenId = Number(selectedPredioId);
+    }
+    
     delete cleanData.destinoExterno;
     cleanData.fecha = new Date(cleanData.fecha).toISOString();
     
@@ -94,23 +96,38 @@ export const GuiaMovilizacionForm = ({ animalsData, isLoadingData, isErrorData }
     };
 
     try {
-      await mutateAsync(payload);
+      // Si la API generara el número de guía, se regresaría en res.data
+      const res = await mutateAsync(payload);
       
       const movilizados = animalsData.filter(a => selectedAnimals.has(a.id));
-      setPrintData({ evento: cleanData, animales: movilizados, destinoExterno: data.destinoExterno, totalAnimales: movilizados.length });
+      
+      // Armar un objeto compatible con generateGuiaPDF
+      const guiaData = {
+         numeroGuia: res?.data?.[0]?.numeroGuia,
+         fecha: cleanData.fecha,
+         tipo: cleanData.tipo,
+         transportista: cleanData.transportista,
+         cedulaChofer: cleanData.cedulaChofer,
+         placa: cleanData.placaVehiculo,
+         observaciones: cleanData.observaciones,
+         animales: movilizados
+      };
       
       toast.success('Guía generada correctamente.');
       
       setTimeout(() => {
-         handlePrint();
+         generateCSMIPdf(guiaData, true);
          reset();
          setSelectedAnimals(new Set());
          setStep(1);
+         if (onSuccess) onSuccess();
       }, 500);
       
-    } catch (e) {
-      console.error(e);
-      toast.error('Ocurrió un error al generar la guía.');
+    } catch (err: any) {
+      console.error(err);
+      const errorPayload = err.response?.data?.error || err.response?.data || err.message;
+      const msg = typeof errorPayload === 'object' ? JSON.stringify(errorPayload, null, 2) : errorPayload;
+      toast.error("Fallo del servidor en traslado: " + msg);
     }
   };
 
@@ -119,7 +136,7 @@ export const GuiaMovilizacionForm = ({ animalsData, isLoadingData, isErrorData }
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 pb-4 border-b border-gray-200">
         <h2 className="text-2xl font-bold text-gray-950 flex items-center gap-2">
           <ClipboardList className="w-6 h-6 text-emerald-600"/> 
-          Emisión de Guía de Movilización (SIFAE/CZPM-M)
+          Emisión de Guía de Movilización
         </h2>
         
         {/* Wizard Progress */}
@@ -150,10 +167,12 @@ export const GuiaMovilizacionForm = ({ animalsData, isLoadingData, isErrorData }
 
               <Input type="date" label="Fecha de Movilización" {...register('fecha')} error={errors.fecha?.message} />
 
+              <Input label="Origen (Predio Actual)" value={predioOrigenName} readOnly className="bg-gray-50 text-gray-500" />
+
               <Select label="Destino Registrado (Predio/Camal)" {...register('predioDestinoId')} error={errors.predioDestinoId?.message} disabled={prediosLoading}>
                 <option value="">{prediosLoading ? 'Cargando fincas...' : 'Seleccione destino...'}</option>
                 <option value="EXTERNO" className="font-bold">* OTRO DESTINO EXTERNO *</option>
-                {predios?.map((p: any) => (
+                {fincasDestino?.map((p: any) => (
                   <option key={p.id} value={p.id}>{p.nombre}</option>
                 ))}
               </Select>
@@ -234,10 +253,6 @@ export const GuiaMovilizacionForm = ({ animalsData, isLoadingData, isErrorData }
         )}
       </form>
       
-      {/* Oculto, usado sólo para imprimir */}
-      <div className="hidden">
-        <GuiaImprimible ref={printRef} data={printData} />
-      </div>
     </div>
   );
 };

@@ -44,12 +44,10 @@ export class ReporteService {
         HEMBRA: animales.filter(a => a.sexo === 'HEMBRA').length,
         MACHO: animales.filter(a => a.sexo === 'MACHO').length,
       },
-      porEstado: {
-        ACTIVO: animales.filter(a => a.estado === 'ACTIVO').length,
-        GESTANTE: animales.filter(a => a.estado === 'GESTANTE').length,
-        EN_RETIRO: animales.filter(a => a.estado === 'EN_RETIRO').length,
-        MUERTO: animales.filter(a => a.estado === 'MUERTO').length,
-      },
+      porEstado: animales.reduce((acc, a) => {
+        acc[a.estado] = (acc[a.estado] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>),
     };
 
     return { resumen, detalle: inventario };
@@ -129,6 +127,8 @@ export class ReporteService {
         // DTO Frontend (JSON)
         id: a.id,
         codigoVisual: a.codigoVisual,
+        nombre: a.nombre || 'Sin nombre',
+        estado: a.estado,
         eventoId: eventoActivo?.id,
         tipoEvento: eventoActivo?.tipo,
         fecha: eventoActivo?.fecha,

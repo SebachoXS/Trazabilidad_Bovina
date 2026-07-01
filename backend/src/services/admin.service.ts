@@ -80,8 +80,8 @@ export class AdminService {
     return p;
   }
 
-  async getAllPredios(): Promise<Predio[]> {
-    return this.repo.findAllPredios();
+  async getAllPredios(estado?: string): Promise<Predio[]> {
+    return this.repo.findAllPredios(estado);
   }
 
   async updatePredio(id: number, dto: UpdatePredioDto): Promise<Predio> {
@@ -100,6 +100,55 @@ export class AdminService {
     }
 
     await this.repo.softDeletePredio(id);
+  }
+
+  async getPrediosPendientes(): Promise<Predio[]> {
+    return this.repo.findPrediosPendientes();
+  }
+
+  async aprobarPredio(id: number, adminId: number): Promise<void> {
+    const p = await this.repo.findPredioById(id);
+    if (!p) throw new NotFoundError('PREDIO_NOT_FOUND', 'Predio no encontrado.');
+    if (p.estado === 'ACTIVO') throw new BusinessRuleError('PREDIO_YA_ACTIVO', 'El predio ya está activo.');
+    
+    await this.repo.updatePredio(id, { estado: 'ACTIVO' });
+
+    await prisma.auditLog.create({
+      data: {
+        usuarioId: adminId,
+        accion: 'APROBACION_PREDIO',
+        entidad: 'Predio',
+        entidadId: id,
+        datos: JSON.stringify({ predioAprobadoId: id }),
+      }
+    });
+  }
+
+  async rechazarPredio(id: number, adminId: number, motivoRechazo: string): Promise<void> {
+    const p = await this.repo.findPredioById(id);
+    if (!p) throw new NotFoundError('PREDIO_NOT_FOUND', 'Predio no encontrado.');
+    if (p.estado !== 'PENDIENTE') {
+      throw new BusinessRuleError('ESTADO_INVALIDO', 'Solo se pueden rechazar predios pendientes.');
+    }
+    
+    // Mutación estricta de estado
+    await this.repo.updatePredio(id, { estado: 'RECHAZADO', motivoRechazo });
+    
+    // Validación estricta: confirmamos con Prisma que la mutación persistió
+    const mutacionComprobada = await this.repo.findPredioById(id);
+    if (!mutacionComprobada || mutacionComprobada.estado !== 'RECHAZADO') {
+      throw new Error('Inconsistencia en BD: El estado del predio no pudo mutar a RECHAZADO.');
+    }
+    
+    await prisma.auditLog.create({
+      data: {
+        usuarioId: adminId,
+        accion: 'RECHAZO_PREDIO',
+        entidad: 'Predio',
+        entidadId: id,
+        datos: JSON.stringify({ predioRechazadoId: id, motivo: motivoRechazo }),
+      }
+    });
   }
 
   async getPredioStats(id: number) {
@@ -217,22 +266,33 @@ export class AdminService {
     return userSafe;
   }
 
-  async toggleUsuarioStatus(id: number, activo: boolean): Promise<void> {
+  async toggleUsuarioStatus(id: number): Promise<void> {
     const u = await this.repo.findUsuarioById(id);
     if (!u) throw new NotFoundError('USUARIO_NOT_FOUND', 'Usuario no encontrado.');
 
-    await this.repo.updateUsuario(id, { activo });
-    if (!activo) {
-      // Invalida la sesión actual del usuario al desactivarlo
+    const isActivo = u.estado === 'ACTIVO';
+    const nuevoEstado = isActivo ? 'INACTIVO' : 'ACTIVO';
+
+    await this.repo.updateUsuario(id, { activo: !isActivo, estado: nuevoEstado });
+    
+    if (isActivo) {
+      // Invalida la sesión actual del usuario al suspenderlo
       await prisma.sesionUsuario.deleteMany({ where: { usuarioId: id } });
     }
   }
 
   async aprobarUsuario(id: number, adminId: number): Promise<void> {
-    const u = await this.repo.findUsuarioById(id);
+    const u: any = await this.repo.findUsuarioById(id);
     if (!u) throw new NotFoundError('USUARIO_NOT_FOUND', 'Usuario no encontrado.');
 
-    await this.repo.updateUsuario(id, { activo: true });
+    const updateData: any = { activo: true, estado: 'ACTIVO' };
+    
+    if (u.fincaSolicitadaId) {
+      updateData.prediosAsignados = { connect: [{ id: u.fincaSolicitadaId }] };
+      updateData.fincaSolicitadaId = null;
+    }
+
+    await this.repo.updateUsuario(id, updateData);
     
     // Log
     await prisma.auditLog.create({
@@ -247,10 +307,16 @@ export class AdminService {
   }
 
   async rechazarUsuario(id: number, adminId: number): Promise<void> {
-    const u = await this.repo.findUsuarioById(id);
+    const u: any = await this.repo.findUsuarioById(id);
     if (!u) throw new NotFoundError('USUARIO_NOT_FOUND', 'Usuario no encontrado.');
 
-    await this.repo.softDeleteUsuario(id);
+    const updateData: any = { activo: false, estado: 'RECHAZADO' };
+    if (u.fincaSolicitadaId) {
+      updateData.fincaSolicitada = { disconnect: true };
+    }
+
+    await this.repo.updateUsuario(id, updateData);
+    // await this.repo.softDeleteUsuario(id);
     
     // Log
     await prisma.auditLog.create({

@@ -110,5 +110,10 @@ export const animalsService = {
   rechazarAlta: async (id: number): Promise<{ success: boolean; message: string }> => {
     const { data } = await api.patch(`/animales/${id}/rechazar-alta`);
     return data;
+  },
+
+  darDeBaja: async (id: number, motivo: string, detalle: string): Promise<{ success: boolean; data: any }> => {
+    const { data } = await api.put(`/animales/${id}/baja`, { motivo, detalle });
+    return data;
   }
 };

@@ -6,11 +6,16 @@
 import { useAuthStore } from '../store/authStore';
 import { useGlobalContext } from '../store/globalContextStore';
 import { useDashboardData } from '../features/dashboard/hooks/useDashboardData';
-import { StatCard } from '../components/ui/StatCard';
 import { Loader2, Users, AlertTriangle, ShieldCheck, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { SolicitarPredioModal } from '../components/ui/SolicitarPredioModal';
+import { SolicitudFincaTrabajador } from '../components/ui/SolicitudFincaTrabajador';
+import { SolicitudFincaVeterinario } from '../components/ui/SolicitudFincaVeterinario';
 
 export default function Dashboard() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showLobbyVeterinario, setShowLobbyVeterinario] = useState(false);
   const { user } = useAuthStore();
   const { selectedPredioId, selectedPropietarioId } = useGlobalContext();
   const { metrics, alertasRetiro, isLoading, isError } = useDashboardData({
@@ -18,6 +23,32 @@ export default function Dashboard() {
     propietarioId: selectedPropietarioId || undefined
   });
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleOpenLobby = () => setShowLobbyVeterinario(true);
+    window.addEventListener('open-lobby-veterinario', handleOpenLobby);
+    return () => window.removeEventListener('open-lobby-veterinario', handleOpenLobby);
+  }, []);
+
+  if (user?.rol === 'OPERARIO' && (!user.prediosAsignados || user.prediosAsignados.length === 0)) {
+    return <SolicitudFincaTrabajador />;
+  }
+
+  if (user?.rol === 'VETERINARIO' && (showLobbyVeterinario || !user.prediosAsignados || user.prediosAsignados.length === 0)) {
+    return (
+      <div className="relative">
+        {showLobbyVeterinario && user.prediosAsignados && user.prediosAsignados.length > 0 && (
+          <button 
+            onClick={() => setShowLobbyVeterinario(false)}
+            className="absolute top-4 left-4 z-10 bg-white border border-gray-200 px-4 py-2 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center"
+          >
+            <ArrowRight className="w-4 h-4 mr-2 rotate-180" /> Volver al Dashboard
+          </button>
+        )}
+        <SolicitudFincaVeterinario />
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -40,13 +71,29 @@ export default function Dashboard() {
   return (
     <div className="space-y-8 max-w-6xl mx-auto animate-fade-in p-2 sm:p-4">
       {/* Saludo */}
-      <div className="bg-emerald-50 border border-emerald-100 p-8 rounded-2xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--primary)] rounded-full blur-[100px] opacity-10"></div>
-        <h1 className="text-3xl font-bold text-emerald-950 relative z-10">¡Bienvenido de vuelta, {user?.nombre}! 👋</h1>
-        <p className="mt-2 text-emerald-800 text-lg relative z-10">
-          Este es el resumen operativo de tu predio al día de hoy.
-        </p>
+      <div className="bg-emerald-50 border border-emerald-100 p-8 rounded-2xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--primary)] rounded-full blur-[100px] opacity-10"></div>
+          <h1 className="text-3xl font-bold text-emerald-950 relative z-10">¡Bienvenido de vuelta, {user?.nombre}! 👋</h1>
+          <p className="mt-2 text-emerald-800 text-lg relative z-10">
+            Este es el resumen operativo de tu predio al día de hoy.
+          </p>
+        </div>
+        {user?.rol === 'PROPIETARIO' && (
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="relative z-10 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-xl shadow-sm transition-colors whitespace-nowrap"
+          >
+            + Solicitar Alta de Predio
+          </button>
+        )}
       </div>
+
+      <SolicitarPredioModal 
+        propietarioId={user?.propietarioId || 0} 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+      />
 
       {/* Fila de Métricas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

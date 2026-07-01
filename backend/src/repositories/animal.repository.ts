@@ -37,6 +37,13 @@ export class AnimalRepository implements IAnimalRepository {
       include: {
         predio: { select: { id: true, nombre: true } },
         pesajes: { orderBy: { fecha: 'desc' } },
+        movimientos: {
+          orderBy: { fecha: 'desc' },
+          include: {
+            predioOrigen: { select: { id: true, nombre: true } },
+            predioDestino: { select: { id: true, nombre: true } }
+          }
+        },
       },
     });
   }
@@ -46,6 +53,14 @@ export class AnimalRepository implements IAnimalRepository {
       where: { codigoVisual, deletedAt: null },
       include: {
         predio: { select: { id: true, nombre: true } },
+        pesajes: { orderBy: { fecha: 'desc' } },
+        movimientos: {
+          orderBy: { fecha: 'desc' },
+          include: {
+            predioOrigen: { select: { id: true, nombre: true } },
+            predioDestino: { select: { id: true, nombre: true } }
+          }
+        },
       },
     });
   }

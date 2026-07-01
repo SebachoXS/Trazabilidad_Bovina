@@ -24,12 +24,20 @@ export const propietarioUpdateSchema = propietarioCreateSchema.partial().refine(
 // ── PREDIOS ───────────────────────────────────────────────────────────────────
 
 export const predioCreateSchema = z.object({
-  nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres.').max(200),
-  codigo: z.string().min(2, 'El código debe tener al menos 2 caracteres.').max(50),
-  municipio: z.string().min(2).max(100),
-  departamento: z.string().min(2).max(100),
-  area: z.number().positive('El área debe ser positiva.').optional(),
-  propietarioId: z.number().int().positive('El propietarioId debe ser un número positivo.'),
+  nombre: z.string().min(2),
+  codigo: z.string().min(2),
+  municipio: z.string().optional(), // mantenido por compatibilidad
+  departamento: z.string().optional(), // mantenido por compatibilidad
+  provincia: z.string().optional(),
+  canton: z.string().optional(),
+  parroquia: z.string().optional(),
+  coordenadas: z.string().optional(),
+  area: z.number().positive().optional(),
+  propietarioId: z.number().int().positive().optional(),
+});
+
+export const predioRechazarSchema = z.object({
+  motivoRechazo: z.string().min(5, 'El motivo de rechazo debe ser claro y conciso.'),
 });
 
 export const predioUpdateSchema = predioCreateSchema.partial().refine(

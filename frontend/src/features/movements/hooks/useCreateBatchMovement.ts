@@ -7,7 +7,7 @@ export function useCreateBatchMovement() {
 
   return useMutation({
     mutationFn: async (data: any) => {
-      const res = await api.post('/api/v1/movimientos/batch', data);
+      const res = await api.post('/movimientos/batch', data);
       return res.data;
     },
     onSuccess: () => {
@@ -15,9 +15,10 @@ export function useCreateBatchMovement() {
       queryClient.invalidateQueries({ queryKey: ['animales'] });
       queryClient.invalidateQueries({ queryKey: ['movimientos'] });
     },
-    onError: (error: any) => {
-      const msg = error.response?.data?.message || 'Error al procesar el traslado masivo.';
-      toast.error(msg);
+    onError: (err: any) => {
+      const errorPayload = err.response?.data?.error || err.response?.data || err.message;
+      const msg = typeof errorPayload === 'object' ? JSON.stringify(errorPayload, null, 2) : errorPayload;
+      toast.error("Fallo del servidor en traslado (Hook): " + msg);
     },
   });
 }

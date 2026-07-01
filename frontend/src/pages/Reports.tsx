@@ -43,6 +43,17 @@ export default function Reports() {
     }
   };
 
+  if (inventario.isLoading || sanidad.isLoading || retiros.isLoading || !inventario.data || !sanidad.data || !retiros.data) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-gray-500 font-medium text-lg flex items-center gap-3 animate-pulse">
+          <Loader2 className="w-6 h-6 animate-spin" />
+          Cargando información del reporte...
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto animate-fade-in p-2 sm:p-4">
       
@@ -135,17 +146,17 @@ export default function Reports() {
                     </div>
                     <div>
                       <p className="text-gray-500 text-sm font-medium">Total de Animales</p>
-                      <h3 className="text-3xl font-bold text-gray-950">{inventario.data.data.total}</h3>
+                      <h3 className="text-3xl font-bold text-gray-950">{inventario.data?.data?.total || 0}</h3>
                     </div>
                   </div>
                   
                   <div className="bg-gray-50 border border-gray-200 p-6 rounded-2xl">
                     <h3 className="text-sm font-medium text-gray-600 mb-4 border-b border-gray-200 pb-2">Distribución por Estado</h3>
                     <div className="space-y-3">
-                      {Object.entries(inventario.data.data.porEstado).map(([estado, count]) => (
+                      {Object.entries(inventario.data?.data?.porEstado || {}).map(([estado, count]) => (
                         <div key={estado} className="flex justify-between items-center">
                           <span className="text-sm text-gray-950">{estado}</span>
-                          <span className="text-sm font-bold text-emerald-600">{count}</span>
+                          <span className="text-sm font-bold text-emerald-600">{count as React.ReactNode}</span>
                         </div>
                       ))}
                     </div>
@@ -154,10 +165,10 @@ export default function Reports() {
                   <div className="bg-gray-50 border border-gray-200 p-6 rounded-2xl">
                     <h3 className="text-sm font-medium text-gray-600 mb-4 border-b border-gray-200 pb-2">Distribución por Sexo</h3>
                     <div className="space-y-3">
-                      {Object.entries(inventario.data.data.porSexo).map(([sexo, count]) => (
+                      {Object.entries(inventario.data?.data?.porSexo || {}).map(([sexo, count]) => (
                         <div key={sexo} className="flex justify-between items-center">
                           <span className="text-sm text-gray-950">{sexo}</span>
-                          <span className="text-sm font-bold text-emerald-600">{count}</span>
+                          <span className="text-sm font-bold text-emerald-600">{count as React.ReactNode}</span>
                         </div>
                       ))}
                     </div>
@@ -183,7 +194,7 @@ export default function Reports() {
                   </div>
                   <div>
                     <p className="text-gray-500 text-sm font-medium">Eventos Registrados</p>
-                    <h3 className="text-3xl font-bold text-gray-950">{sanidad.data.data.totalEventos}</h3>
+                    <h3 className="text-3xl font-bold text-gray-950">{sanidad.data?.data?.totalEventos || 0}</h3>
                   </div>
                 </div>
 
@@ -193,17 +204,17 @@ export default function Reports() {
                   </div>
                   <div>
                     <p className="text-gray-500 text-sm font-medium">En Retiro Activo</p>
-                    <h3 className="text-3xl font-bold text-gray-950">{sanidad.data.data.animalesEnRetiro}</h3>
+                    <h3 className="text-3xl font-bold text-gray-950">{sanidad.data?.data?.animalesEnRetiro || 0}</h3>
                   </div>
                 </div>
 
                 <div className="bg-gray-50 border border-gray-200 p-6 rounded-2xl">
                   <h3 className="text-sm font-medium text-gray-600 mb-4 border-b border-gray-200 pb-2">Por Tipo de Evento</h3>
                   <div className="space-y-3">
-                    {Object.entries(sanidad.data.data.porTipo).map(([tipo, count]) => (
+                    {Object.entries(sanidad.data?.data?.porTipo || {}).map(([tipo, count]) => (
                       <div key={tipo} className="flex justify-between items-center">
                         <span className="text-sm text-gray-950">{tipo}</span>
-                        <span className="text-sm font-bold text-emerald-600">{count}</span>
+                        <span className="text-sm font-bold text-emerald-600">{count as React.ReactNode}</span>
                       </div>
                     ))}
                   </div>
@@ -220,7 +231,7 @@ export default function Reports() {
                <div className="flex justify-center py-20"><Loader2 className="w-10 h-10 animate-spin text-emerald-600" /></div>
             ) : retiros.isError ? (
               <div className="text-red-600 text-center py-10">Error al cargar los retiros.</div>
-            ) : retiros.data.data.length === 0 ? (
+            ) : (!retiros.data?.data || retiros.data.data.length === 0) ? (
               <div className="text-center py-16">
                 <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
                   <HeartPulse className="w-10 h-10" />
@@ -240,12 +251,12 @@ export default function Reports() {
                     </tr>
                   </thead>
                   <tbody>
-                    {retiros.data.data.map((animal) => (
+                    {(retiros.data?.data || []).map((animal: any) => (
                       <tr key={animal.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
                         <td className="py-4 px-6 font-mono font-bold text-gray-950 text-lg">{animal.codigoVisual}</td>
-                        <td className="py-4 px-6 font-medium text-gray-600">{animal.nombre || '-'}</td>
+                        <td className="py-4 px-6 font-medium text-gray-600">{animal.nombre || 'Sin nombre'}</td>
                         <td className="py-4 px-6">
-                          <Badge estado={animal.estado} />
+                          <Badge estado={animal.estado || 'EN_RETIRO'} />
                         </td>
                         <td className="py-4 px-6 text-right">
                           <button

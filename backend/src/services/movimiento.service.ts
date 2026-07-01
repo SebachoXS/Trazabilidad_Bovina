@@ -207,7 +207,12 @@ export class MovimientoService {
           case 'TRASLADO_EXTERNO':
           case 'CAMBIO_PROPIETARIO':
           case 'INGRESO':
-            if (evento.predioDestinoId) nuevoPredioId = evento.predioDestinoId;
+            if (evento.predioDestinoId) {
+              nuevoPredioId = evento.predioDestinoId;
+              nuevoEstado = 'EN_TRANSITO';
+            } else {
+              nuevoEstado = 'EN_TRANSITO';
+            }
             break;
           case 'EGRESO_SACRIFICIO':
             nuevoEstado = 'MUERTO';

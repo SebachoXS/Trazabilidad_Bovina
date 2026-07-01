@@ -14,7 +14,7 @@ export const codigoVisualSchema = z
   .length(10, 'El código visual debe tener exactamente 10 dígitos.')
   .regex(/^\d{10}$/, 'El código visual debe contener únicamente dígitos numéricos (0-9).');
 
-export const animalCreateSchema = z.object({
+export const animalCreateSchemaBase = z.object({
   codigoVisual: codigoVisualSchema,
   nombre: z.string().max(100).optional(),
   raza: z.string().min(1, 'La raza es obligatoria.').max(100).toUpperCase().refine((val) => val === 'CHAROLAIS', { message: 'RAZA_NO_SOPORTADA' }),
@@ -22,19 +22,32 @@ export const animalCreateSchema = z.object({
   fechaNacimiento: z.coerce.date().optional(),
   pesoNacimiento: z.number().positive().optional(),
   predioId: z.number().int().positive('El predioId debe ser un número positivo.'),
-  madreId: z.number().int().positive().optional(),
-  padreId: z.number().int().positive().optional(),
+  madreId: z.number().int().positive().nullable().optional(),
+  padreId: z.number().int().positive().nullable().optional(),
   esToroCatalogo: z.boolean().default(false),
+  proposito: z.enum(['CARNE', 'LECHE', 'CRIA_GESTACION', 'REPRODUCTOR_SEMENTAL', 'DOBLE_PROPOSITO']).nullable().optional(),
   isGestante: z.boolean().default(false),
   registrarIngreso: z.boolean().default(false),
   numeroGuiaIngreso: z.string().max(100).optional(),
+});
+
+export const animalCreateSchema = animalCreateSchemaBase.refine((data) => {
+  if (!data.proposito) return true;
+  if (data.sexo === 'MACHO') {
+    return ['CARNE', 'REPRODUCTOR_SEMENTAL'].includes(data.proposito);
+  } else {
+    return ['CARNE', 'LECHE', 'CRIA_GESTACION', 'DOBLE_PROPOSITO'].includes(data.proposito);
+  }
+}, {
+  message: 'Propósito productivo no válido para el sexo seleccionado.',
+  path: ['proposito']
 });
 
 /**
  * PATCH: codigoVisual NUNCA puede modificarse (RN-001).
  * predioId tampoco se puede modificar directamente aquí (requiere movimiento de TRASLADO).
  */
-export const animalUpdateSchema = animalCreateSchema
+export const animalUpdateSchema = animalCreateSchemaBase
   .omit({ codigoVisual: true, predioId: true })
   .partial()
   .refine(

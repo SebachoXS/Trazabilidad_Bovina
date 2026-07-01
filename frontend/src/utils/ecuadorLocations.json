@@ -1,0 +1,28 @@
+{
+  "Pichincha": {
+    "Quito": ["Iñaquito", "Cotocollao", "Cumbayá", "Calderón", "Tumbaco", "Conocoto"],
+    "Mejía": ["Machachi", "Aloag", "Aloasi", "Cutuglahua", "El Chaupi", "Uyumbicho"],
+    "Cayambe": ["Cayambe", "Ayora", "Juan Montalvo", "Ascázubi", "Otón", "Cangahua"],
+    "Rumiñahui": ["Sangolquí", "San Pedro de Taboada", "Cotogchoa", "Rumipamba"]
+  },
+  "Guayas": {
+    "Guayaquil": ["Tarqui", "Ximena", "Febres Cordero", "Letamendi", "Pascuales", "Tenguel"],
+    "Samborondón": ["Samborondón", "La Puntilla", "Tarifa"],
+    "Daule": ["Daule", "La Aurora", "Juan Bautista Aguirre", "Laurel", "Limonal"],
+    "Milagro": ["Milagro", "Chobo", "Mariscal Sucre", "Roberto Astudillo"]
+  },
+  "Azuay": {
+    "Cuenca": ["Bellavista", "Cañaribamba", "El Batán", "Sucre", "Turi", "Valle", "Baños", "Paccha"],
+    "Gualaceo": ["Gualaceo", "Daniel Córdova Toral", "Jadán", "Mariano Moreno", "Remigio Crespo Toral", "San Juan", "Zhidmad"],
+    "Paute": ["Paute", "Bulán", "Chicán", "El Cabo", "Guachapala", "San Cristóbal", "Tomebamba"]
+  },
+  "Manabí": {
+    "Portoviejo": ["Portoviejo", "Andrés de Vera", "San Pablo", "Alajuela", "Calderón", "Crucita", "Pueblo Nuevo"],
+    "Manta": ["Manta", "Los Esteros", "Tarqui", "San Mateo", "San Lorenzo", "Santa Marianita"],
+    "Chone": ["Chone", "Santa Rita", "Boyacá", "Canuto", "Convento", "Chibunga", "Eloy Alfaro"]
+  },
+  "Santo Domingo de los Tsáchilas": {
+    "Santo Domingo": ["Santo Domingo", "Chiguilpe", "Río Verde", "Abraham Calazacón", "Bombolí", "Zaracay"],
+    "La Concordia": ["La Concordia", "Monterrey", "La Villegas", "Plan Piloto"]
+  }
+}

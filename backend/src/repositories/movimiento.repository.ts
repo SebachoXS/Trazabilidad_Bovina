@@ -51,6 +51,7 @@ export class MovimientoRepository {
         include: {
           predioOrigen: { select: { nombre: true } },
           predioDestino: { select: { nombre: true } },
+          animal: { select: { id: true, codigoVisual: true, raza: true, sexo: true } },
         },
       }),
     ]);

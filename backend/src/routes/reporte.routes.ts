@@ -12,11 +12,11 @@ export const reporteRouter = Router();
 
 reporteRouter.use(authMiddleware);
 
-// Reporte de Inventario (ADMIN, VETERINARIO)
-reporteRouter.get('/inventario', rbacMiddleware(['SUPER_ADMIN', 'VETERINARIO']), getInventario);
+// Reporte de Inventario (ADMIN, VETERINARIO, PROPIETARIO)
+reporteRouter.get('/inventario', rbacMiddleware(['SUPER_ADMIN', 'VETERINARIO', 'PROPIETARIO']), getInventario);
 
-// Reporte Sanitario (ADMIN, VETERINARIO)
-reporteRouter.get('/sanitario', rbacMiddleware(['SUPER_ADMIN', 'VETERINARIO']), getSanitario);
+// Reporte Sanitario (ADMIN, VETERINARIO, PROPIETARIO)
+reporteRouter.get('/sanitario', rbacMiddleware(['SUPER_ADMIN', 'VETERINARIO', 'PROPIETARIO']), getSanitario);
 
 // Reporte de Animales en Retiro (Todos los roles, vital para el campo)
-reporteRouter.get('/animales-en-retiro', rbacMiddleware(['SUPER_ADMIN', 'VETERINARIO', 'OPERARIO', 'CLIENTE']), getAnimalesEnRetiro);
+reporteRouter.get('/animales-en-retiro', rbacMiddleware(['SUPER_ADMIN', 'VETERINARIO', 'OPERARIO', 'CLIENTE', 'PROPIETARIO']), getAnimalesEnRetiro);

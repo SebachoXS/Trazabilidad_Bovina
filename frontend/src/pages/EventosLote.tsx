@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { animalsService } from '../features/animals/api/animals.service';
 import { useCreateBatchEvent } from '../features/health/hooks/useCreateBatchEvent';
 import { Loader2, Syringe, Save, CheckSquare, Square, AlertTriangle, Truck } from 'lucide-react';
@@ -11,6 +12,8 @@ import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { Textarea } from '../components/ui/Textarea';
 import { GuiaMovilizacionForm } from '../features/movements/components/GuiaMovilizacionForm';
+import { HistorialGuias } from '../features/movements/components/HistorialGuias';
+import { useCanAccess } from '../features/auth/hooks/useCanAccess';
 
 const batchEventSchema = z.object({
   tipo: z.enum(['VACUNACION', 'TRATAMIENTO', 'DIAGNOSTICO', 'DESPARASITACION', 'CIRUGIA']),
@@ -24,8 +27,11 @@ const batchEventSchema = z.object({
 type BatchEventFormValues = z.infer<typeof batchEventSchema>;
 
 export default function EventosLote() {
-  const [activeTab, setActiveTab] = useState<'sanidad' | 'movimientos'>('sanidad');
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<'sanidad' | 'movimientos' | 'historial-guias'>('sanidad');
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const canAccessMovimientos = useCanAccess(['SUPER_ADMIN', 'PROPIETARIO']);
   
   const { data: animalsData, isLoading: animalsLoading, isError: animalsError } = useQuery({
     queryKey: ['animales', 'lote'],
@@ -76,16 +82,34 @@ export default function EventosLote() {
         Object.entries(data).map(([k, v]) => [k, v === '' ? undefined : v])
       ) as any;
 
+      if (cleanData.diasRetiro !== undefined && cleanData.diasRetiro !== null) {
+        cleanData.diasRetiro = parseInt(cleanData.diasRetiro, 10);
+      } else {
+        cleanData.diasRetiro = null;
+      }
+      
+      if (cleanData.fecha) {
+        cleanData.fecha = new Date(cleanData.fecha).toISOString();
+      }
+
+      const animalIdsArray = Array.from(selectedIds).map(id => parseInt(id as string, 10));
+
       await mutateAsync({
-        animalIds: Array.from(selectedIds),
+        animalIds: animalIdsArray,
         evento: cleanData
       });
 
       toast.success(`Evento registrado correctamente para ${selectedIds.size} animales.`);
       reset();
       setSelectedIds(new Set());
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Error procesando lote.');
+      
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['animales'] });
+      navigate('/');
+    } catch (err: any) {
+      const errorPayload = err.response?.data?.error || err.response?.data || err.message;
+      const msg = typeof errorPayload === 'object' ? JSON.stringify(errorPayload, null, 2) : errorPayload;
+      toast.error("Error del servidor: " + msg);
     }
   };
 
@@ -112,13 +136,27 @@ export default function EventosLote() {
         >
           <Syringe className="w-4 h-4" /> Sanidad (Tratamientos/Vacunaciones)
         </button>
-        <button 
-          onClick={() => setActiveTab('movimientos')}
-          className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'movimientos' ? 'bg-emerald-50 text-emerald-800 border-b-2 border-emerald-600' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}`}
-        >
-          <Truck className="w-4 h-4" /> Traslados / Guías (CSMI)
-        </button>
+        {canAccessMovimientos && (
+          <button 
+            onClick={() => setActiveTab('movimientos')}
+            className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'movimientos' ? 'bg-indigo-50 text-indigo-800 border-b-2 border-indigo-600' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}`}
+          >
+            <Truck className="w-4 h-4" /> Traslados / Guías (CSMI)
+          </button>
+        )}
+        {canAccessMovimientos && (
+          <button 
+            onClick={() => setActiveTab('historial-guias')}
+            className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'historial-guias' ? 'bg-indigo-50 text-indigo-800 border-b-2 border-indigo-600' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}`}
+          >
+            <CheckSquare className="w-4 h-4" /> Historial de Guías Emitidas
+          </button>
+        )}
       </div>
+
+      {activeTab === 'historial-guias' && (
+        <HistorialGuias />
+      )}
 
       {activeTab === 'sanidad' ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -250,11 +288,16 @@ export default function EventosLote() {
             </div>
           </div>
         </div>
-      ) : (
+      ) : activeTab === 'movimientos' && canAccessMovimientos ? (
         <div className="w-full">
-           <GuiaMovilizacionForm animalsData={animals} isLoadingData={animalsLoading} isErrorData={animalsError} />
+           <GuiaMovilizacionForm 
+              animalsData={animals} 
+              isLoadingData={animalsLoading} 
+              isErrorData={animalsError} 
+              onSuccess={() => setActiveTab('historial-guias')}
+           />
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

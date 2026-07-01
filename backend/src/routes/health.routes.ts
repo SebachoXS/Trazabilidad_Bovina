@@ -39,7 +39,7 @@ healthRouter.get('/animales/:animalId/eventos', authMiddleware, getEventosByAnim
 healthRouter.post(
   '/animales/:animalId/eventos',
   authMiddleware,
-  rbacMiddleware(['SUPER_ADMIN', 'VETERINARIO']),
+  rbacMiddleware(['SUPER_ADMIN', 'VETERINARIO', 'PROPIETARIO']),
   createEvento
 );
 
@@ -78,7 +78,7 @@ healthRouter.get(
 healthRouter.post(
   '/eventos/lote',
   authMiddleware,
-  rbacMiddleware(['SUPER_ADMIN', 'VETERINARIO']),
+  rbacMiddleware(['SUPER_ADMIN', 'VETERINARIO', 'PROPIETARIO']),
   createBatchEvento
 );
 

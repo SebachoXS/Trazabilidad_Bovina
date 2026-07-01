@@ -44,13 +44,25 @@ export class AuthService {
       throw new UnauthorizedError('Credenciales inválidas.');
     }
 
+    if ((user as any).estado === 'PENDIENTE') {
+      throw new UnauthorizedError('Tu cuenta está en revisión por el Administrador.');
+    }
+    if ((user as any).estado === 'RECHAZADO') {
+      throw new UnauthorizedError('Cuenta rechazada.');
+    }
+
+    const combinedPredios = [
+      ...(user.prediosAsignados || []).map((p: any) => p.id),
+      ...(user.fincasVeterinario || []).map((p: any) => p.id)
+    ];
+
     // Payload del JWT
     const payload: AuthPayload = {
       sub: user.id,
       email: user.email,
       rol: user.rol as Rol,
       propietarioId: user.propietarioId,
-      prediosAsignados: user.prediosAsignados.map((p: any) => p.id),
+      prediosAsignados: combinedPredios,
     };
 
     const accessTokenSecret = process.env['JWT_SECRET'] ?? 'fallback_secret';
@@ -75,7 +87,7 @@ export class AuthService {
         email: user.email,
         rol: user.rol,
         propietarioId: user.propietarioId,
-        prediosAsignados: user.prediosAsignados.map((p: any) => p.id),
+        prediosAsignados: combinedPredios,
       },
     };
   }
@@ -108,12 +120,17 @@ export class AuthService {
         throw new UnauthorizedError('Sesión inválida o expirada.');
       }
 
+      const combinedPredios = [
+        ...(user.prediosAsignados || []).map((p: any) => p.id),
+        ...(user.fincasVeterinario || []).map((p: any) => p.id)
+      ];
+
       const payload: AuthPayload = {
         sub: user.id,
         email: user.email,
         rol: user.rol as Rol,
         propietarioId: user.propietarioId,
-        prediosAsignados: user.prediosAsignados.map((p: any) => p.id),
+        prediosAsignados: combinedPredios,
       };
 
       const accessTokenSecret = process.env['JWT_SECRET'] ?? 'fallback_secret';

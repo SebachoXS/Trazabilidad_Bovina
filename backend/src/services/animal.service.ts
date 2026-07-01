@@ -26,9 +26,11 @@ export class AnimalService {
     }
 
     return prisma.$transaction(async (tx) => {
-      // 1. Obtener predio para el código CUSA
-      const predio = await tx.predio.findUnique({ where: { id: dto.predioId } });
-      if (!predio) throw new NotFoundError('PREDIO_NOT_FOUND', 'Predio no encontrado');
+      // 1. Obtener predio para el código CUSA, admitiendo predios activos o legados (null)
+      const predio = await tx.predio.findFirst({ 
+        where: { id: dto.predioId } 
+      });
+      if (!predio) throw new NotFoundError('PREDIO_NOT_FOUND', 'Predio no encontrado o no está activo.');
 
       // 2. CUSA Gen (SecuenciaPredio)
       const currentYear = new Date().getFullYear().toString();
@@ -61,11 +63,12 @@ export class AnimalService {
           fechaNacimiento: dto.fechaNacimiento,
           pesoNacimiento: dto.pesoNacimiento,
           esToroCatalogo: dto.esToroCatalogo,
+          proposito: dto.proposito ?? null,
           estado,
           isGestante: dto.isGestante,
           predioId: dto.predioId,
-          madreId: dto.madreId,
-          padreId: dto.padreId,
+          madreId: dto.madreId ?? null,
+          padreId: dto.padreId ?? null,
         },
       });
 
@@ -196,7 +199,7 @@ export class AnimalService {
   }
 
   /**
-   * Elimina un animal mediante soft-delete.
+   * Elimina un animal permanentemente (hard-delete).
    */
   async delete(id: number, userId: number, ip?: string): Promise<void> {
     const animal = await this.repo.findById(id);
@@ -204,22 +207,98 @@ export class AnimalService {
       throw new NotFoundError('ANIMAL_NOT_FOUND', `El animal con ID ${id} no existe.`);
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.animal.update({
+    try {
+      await prisma.$transaction(async (tx) => {
+        // Eliminar dependencias para evitar error de llave foránea (P2003)
+        await tx.historialEtapa.deleteMany({ where: { animalId: id } });
+        await tx.eventoSanitario.deleteMany({ where: { animalId: id } });
+        await tx.movimiento.deleteMany({ where: { animalId: id } });
+        await tx.pesaje.deleteMany({ where: { animalId: id } });
+        await tx.eventoReproductivo.deleteMany({ where: { animalId: id } });
+
+        await tx.animal.delete({
+          where: { id },
+        });
+
+        await tx.auditLog.create({
+          data: {
+            usuarioId: userId,
+            accion: 'HARD_DELETE_ANIMAL',
+            entidad: 'Animal',
+            entidadId: id,
+            ip: ip ?? null,
+            datos: JSON.stringify({ codigoVisual: animal.codigoVisual }),
+          },
+        });
+      });
+    } catch (error: any) {
+      if (error.code === 'P2003') {
+        throw new BusinessRuleError('No se puede borrar físicamente porque tiene historial activo. Debe darse de baja.');
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Retornar animal de tránsito a ACTIVO.
+   */
+  async retornar(id: number, userId: number, ip?: string): Promise<Animal> {
+    const animal = await this.repo.findById(id);
+    if (!animal) throw new NotFoundError('ANIMAL_NOT_FOUND', `El animal con ID ${id} no existe.`);
+    if (animal.estado !== 'EN_TRANSITO') throw new BusinessRuleError('Solo los animales en tránsito pueden ser retornados.');
+
+    return await prisma.$transaction(async (tx) => {
+      const updated = await tx.animal.update({
         where: { id },
-        data: { deletedAt: new Date() },
+        data: { estado: 'ACTIVO' }
       });
 
       await tx.auditLog.create({
         data: {
           usuarioId: userId,
-          accion: 'DELETE_ANIMAL',
+          accion: 'RETORNO_TRANSITO_ANIMAL',
           entidad: 'Animal',
           entidadId: id,
           ip: ip ?? null,
           datos: JSON.stringify({ codigoVisual: animal.codigoVisual }),
         },
       });
+      return updated;
+    });
+  }
+
+  /**
+   * Dar de baja a un animal (Soft Delete con motivo y trazabilidad).
+   */
+  async darDeBaja(id: number, motivo: string, detalle: string, userId: number, ip?: string): Promise<Animal> {
+    const animal = await this.repo.findById(id);
+    if (!animal) {
+      throw new NotFoundError('ANIMAL_NOT_FOUND', `El animal con ID ${id} no existe.`);
+    }
+
+    return await prisma.$transaction(async (tx) => {
+      const animalActualizado = await tx.animal.update({
+        where: { id },
+        data: {
+          estado: 'DADO_DE_BAJA',
+          motivoBaja: motivo,
+          detalleBaja: detalle || null,
+          fechaBaja: new Date(),
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          usuarioId: userId,
+          accion: 'DAR_DE_BAJA_ANIMAL',
+          entidad: 'Animal',
+          entidadId: id,
+          ip: ip ?? null,
+          datos: JSON.stringify({ codigoVisual: animal.codigoVisual, motivo, detalle }),
+        },
+      });
+
+      return animalActualizado;
     });
   }
   /**
@@ -314,24 +393,27 @@ export class AnimalService {
 
     // Movimientos
     for (const mov of animal.movimientos) {
+      const origen = mov.predioOrigen?.nombre || 'Desconocido';
       let destino = mov.predioDestino?.nombre;
       if (!destino && mov.observaciones?.includes('Destino Externo:')) {
         const match = mov.observaciones.match(/Destino Externo:\s*(.+)/);
-        destino = match ? match[1] : 'N/A';
+        destino = match ? match[1] : 'Feria / Matadero';
       }
       
+      const ruta = `📍 ${origen} ➔ 🏁 ${destino}`;
+      
       const detalles = [
-        destino ? `Destino: ${destino}` : null,
-        mov.numeroGuia ? `Guía: ${mov.numeroGuia}` : null,
-        mov.transportista ? `Transporte: ${mov.transportista}` : null
+        ruta,
+        mov.numeroGuia ? `📄 Guía CSMI: ${mov.numeroGuia}` : null,
+        mov.transportista ? `🚚 Transporte: ${mov.transportista}` : null
       ].filter(Boolean).join(' | ');
 
       lineaDeTiempo.push({
         fecha: mov.fecha,
         tipo: 'MOVIMIENTO',
         icono: '🚚',
-        titulo: `${mov.tipo}`,
-        descripcion: detalles || 'Movimiento sin detalles adicionales',
+        titulo: mov.tipo === 'TRASLADO_EXTERNO' ? 'Traslado Externo' : 'Traslado Interno',
+        descripcion: detalles || 'Movimiento sin detalles',
         categoria: 'LOGISTICA',
       });
     }
@@ -428,7 +510,7 @@ export class AnimalService {
 
     await prisma.animal.update({
       where: { id },
-      data: { deletedAt: new Date() }
+      data: { estado: 'RECHAZADO' }
     });
 
     await prisma.auditLog.create({

@@ -48,7 +48,7 @@ export default function Login() {
       // Redirigir al dashboard
       navigate('/', { replace: true });
     } catch (err: any) {
-      setGlobalError(err.response?.data?.message || 'Error de conexión. Revisa tus credenciales.');
+      setGlobalError(err.response?.data?.error?.message || err.response?.data?.message || 'Error de conexión. Revisa tus credenciales.');
     }
   };
 
@@ -106,6 +106,15 @@ export default function Login() {
             <span>{isSubmitting ? 'Iniciando...' : 'Ingresar'}</span>
           </button>
         </form>
+
+        <div className="mt-6 text-center relative z-10">
+          <p className="text-[var(--text-muted)] text-sm">
+            ¿No tienes cuenta?{' '}
+            <Link to="/register" className="text-[var(--primary)] font-semibold hover:underline">
+              Regístrate aquí
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -23,7 +23,7 @@ const registerSchema = z.object({
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
       'Debe contener al menos una mayúscula, una minúscula, un número y un carácter especial.'
     ),
-  rol: z.enum(['SUPER_ADMIN', 'PROPIETARIO', 'VETERINARIO', 'OPERARIO', 'CLIENTE'], { required_error: 'Selecciona un rol válido' }),
+  rol: z.enum(['PROPIETARIO', 'VETERINARIO', 'OPERARIO'], { required_error: 'Selecciona un rol válido' }),
 });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
@@ -79,9 +79,9 @@ export default function Register() {
       )}
 
       {successMsg && (
-        <div className="mb-6 p-4 bg-emerald-900/30 text-emerald-400 border border-emerald-500/30 rounded-brand-lg flex items-center gap-3">
-          <CheckCircle className="w-5 h-5 flex-shrink-0" />
-          <p className="text-sm font-medium">{successMsg}</p>
+        <div className="mb-6 bg-green-50 border border-green-200 text-green-800 rounded-lg p-4 flex items-center gap-3">
+          <CheckCircle className="text-green-600 w-5 h-5 flex-shrink-0" />
+          <p className="text-green-800 font-medium text-sm">{successMsg}</p>
         </div>
       )}
 
@@ -114,14 +114,12 @@ export default function Register() {
             <label className="block text-sm font-medium text-white">Rol Solicitado</label>
             <select
               {...register('rol')}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base input-glass [&>option]:bg-[#0f172a] sm:text-sm rounded-md"
+              className="mt-1 block w-full pl-3 pr-10 py-2 text-base input-glass [&>option]:bg-white [&>option]:text-gray-900 sm:text-sm rounded-md"
             >
               <option value="">Selecciona un rol</option>
-              <option value="SUPER_ADMIN">Administrador Global</option>
               <option value="PROPIETARIO">Propietario</option>
               <option value="VETERINARIO">Veterinario</option>
               <option value="OPERARIO">Operario</option>
-              <option value="CLIENTE">Cliente / Estudiante</option>
             </select>
             {errors.rol && <p className="mt-1 text-sm text-danger">{errors.rol.message}</p>}
           </div>
@@ -133,7 +131,7 @@ export default function Register() {
         </form>
       )}
 
-      <div className="mt-6 text-center">
+      <div className="mt-4 text-center">
         <p className="text-sm text-[var(--text-muted)]">
           ¿Ya tienes cuenta aprobada?{' '}
           <Link to="/login" className="font-semibold text-primary hover:text-white transition-colors">

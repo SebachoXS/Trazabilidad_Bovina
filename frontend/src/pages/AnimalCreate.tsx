@@ -3,7 +3,7 @@
  * @description Pantalla para el Alta de un nuevo Bovino.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -38,6 +38,7 @@ const animalCreateSchema = z.object({
   registrarIngreso: z.boolean().default(false),
   numeroGuia: z.string().optional(),
   isGestante: z.boolean().default(false),
+  proposito: z.enum(['CARNE', 'LECHE', 'CRIA_GESTACION', 'REPRODUCTOR_SEMENTAL', 'DOBLE_PROPOSITO']).optional(),
 }).superRefine((data, ctx) => {
   if (data.registrarIngreso && !data.numeroGuia) {
     ctx.addIssue({
@@ -45,6 +46,14 @@ const animalCreateSchema = z.object({
       path: ['numeroGuia'],
       message: 'Debe proveer número de guía si registra el ingreso.',
     });
+  }
+  if (data.proposito) {
+    if (data.sexo === 'MACHO' && !['CARNE', 'REPRODUCTOR_SEMENTAL'].includes(data.proposito)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['proposito'], message: 'Propósito no válido para machos.' });
+    }
+    if (data.sexo === 'HEMBRA' && !['CARNE', 'LECHE', 'CRIA_GESTACION', 'DOBLE_PROPOSITO'].includes(data.proposito)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['proposito'], message: 'Propósito no válido para hembras.' });
+    }
   }
 });
 
@@ -59,6 +68,7 @@ export default function AnimalCreate() {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<AnimalFormValues>({
     resolver: zodResolver(animalCreateSchema),
@@ -76,6 +86,10 @@ export default function AnimalCreate() {
   const sexo = watch('sexo');
   const padreId = watch('padreId');
 
+  useEffect(() => {
+    setValue('proposito', undefined as any);
+  }, [sexo, setValue]);
+
   // Queries para cargar padres y madres
   const { data: madresResponse } = useQuery({
     queryKey: ['animales', 'madres'],
@@ -87,21 +101,26 @@ export default function AnimalCreate() {
     queryFn: () => animalsService.getAnimales(1, 100, { sexo: 'MACHO' }),
   });
 
-  // Convertimos la data a opciones para los Selects
   const madresOptions = [
     { value: '', label: 'Ninguna / Sin registro' },
-    ...(madresResponse?.data?.map(m => ({
-      value: m.id.toString(),
-      label: `${m.codigoVisual} ${m.nombre ? `(${m.nombre})` : ''}`
-    })) || [])
+    ...(madresResponse?.data?.map(m => {
+      const baseLabel = `${m.codigoVisual} ${m.nombre ? `(${m.nombre})` : ''}`.trim();
+      return {
+        value: m.id.toString(),
+        label: m.estado === 'ACTIVO' ? baseLabel : `${baseLabel} - [${m.estado.replace(/_/g, ' ')}]`
+      };
+    }) || [])
   ];
 
   const padresOptions = [
     { value: '', label: 'Ninguno / Sin registro' },
-    ...(padresResponse?.data?.map(p => ({
-      value: p.id.toString(),
-      label: `${p.codigoVisual} ${p.nombre ? `(${p.nombre})` : ''}`
-    })) || []),
+    ...(padresResponse?.data?.map(p => {
+      const baseLabel = `${p.codigoVisual} ${p.nombre ? `(${p.nombre})` : ''}`.trim();
+      return {
+        value: p.id.toString(),
+        label: p.estado === 'ACTIVO' ? baseLabel : `${baseLabel} - [${p.estado.replace(/_/g, ' ')}]`
+      };
+    }) || []),
     { value: '-1', label: 'Otro / No Registrado (Ingreso Manual)' }
   ];
 
@@ -127,7 +146,7 @@ export default function AnimalCreate() {
       // Ajuste de limpieza de datos si vienen strings vacíos (evita Error 400 Zod/Prisma)
       const cleanData: any = {
         ...data,
-        predioId: finalPredioId
+        predioId: finalPredioId ? Number(finalPredioId) : undefined
       };
       
       delete cleanData.predioIdLocal;
@@ -172,7 +191,7 @@ export default function AnimalCreate() {
         navigate(`/animales/${response.data.id}`);
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message || err.message || 'Error al intentar registrar el animal.';
+      const msg = err.response?.data?.error || err.response?.data?.message || err.message || 'Error al intentar registrar el animal.';
       setGlobalError(msg);
       toast.error('Error al guardar');
     }
@@ -235,7 +254,7 @@ export default function AnimalCreate() {
         {/* Sección: Características */}
         <div className="space-y-4 relative z-10">
           <h2 className="text-xl font-semibold text-gray-900 border-b border-gray-200 pb-2">Características</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-900 mb-1.5">Raza (Fija por sistema)</label>
               <input 
@@ -254,7 +273,19 @@ export default function AnimalCreate() {
               {errors.sexo && <span className="text-red-600 text-xs mt-1 block">{errors.sexo.message}</span>}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-900 mb-1.5">Fecha de Nacimiento (Opcional)</label>
+              <label className="block text-sm font-medium text-gray-900 mb-1.5">Propósito Productivo</label>
+              <select className="w-full rounded-lg px-4 py-2.5 text-sm bg-white border border-gray-300 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-gray-900" {...register('proposito')}>
+                <option value="">Seleccione propósito...</option>
+                <option value="CARNE">Carne</option>
+                {sexo === 'HEMBRA' && <option value="LECHE">Leche</option>}
+                {sexo === 'HEMBRA' && <option value="CRIA_GESTACION">Cría / Gestación</option>}
+                {sexo === 'HEMBRA' && <option value="DOBLE_PROPOSITO">Doble Propósito</option>}
+                {sexo === 'MACHO' && <option value="REPRODUCTOR_SEMENTAL">Reproductor (Semental)</option>}
+              </select>
+              {errors.proposito && <span className="text-red-600 text-xs mt-1 block">{errors.proposito.message}</span>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-1.5">Fecha Nac. (Opcional)</label>
               <input
                 type="date"
                 className="w-full rounded-lg px-4 py-2.5 text-sm bg-white border border-gray-300 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-gray-900"

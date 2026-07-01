@@ -9,6 +9,7 @@ import type { Usuario, Predio, Propietario } from '@prisma/client';
 
 export type UsuarioAutorizado = Usuario & { 
   prediosAsignados: Predio[];
+  fincasVeterinario?: Predio[];
   propietario: Propietario | null;
   sesiones?: any[];
 };
@@ -27,7 +28,7 @@ export class AuthRepository implements IAuthRepository {
   async findByEmail(email: string): Promise<UsuarioAutorizado | null> {
     const user = await prisma.usuario.findUnique({
       where: { email },
-      include: { prediosAsignados: true, propietario: true },
+      include: { prediosAsignados: true, fincasVeterinario: true, propietario: true },
     });
 
     if (!user || !user.activo) {
@@ -45,6 +46,7 @@ export class AuthRepository implements IAuthRepository {
       where: { id: userId },
       include: { 
         prediosAsignados: true, 
+        fincasVeterinario: true,
         propietario: true,
         sesiones: { orderBy: { createdAt: 'desc' }, take: 1 } 
       },

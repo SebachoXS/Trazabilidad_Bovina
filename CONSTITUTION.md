@@ -47,10 +47,11 @@ internacionales de inocuidad alimentaria y bienestar animal.
 
 | Rol          | Descripción                                                            |
 |--------------|------------------------------------------------------------------------|
-| Administrador | Dueño o gerente del predio. Acceso total al sistema.                  |
-| Veterinario   | Gestiona eventos sanitarios, diagnósticos y tratamientos.             |
-| Operario      | Registra pesajes, alimentación y novedades diarias en campo.          |
-| Estudiante    | Acceso de solo lectura con fines académicos o de práctica.            |
+| Super Admin   | Administrador Central del Sistema. Control total.                     |
+| Propietario   | Dueño legal del ganado y fincas. Acceso total a sus predios.          |
+| Veterinario   | Médico independiente. Multi-predio, gestiona eventos sanitarios.      |
+| Operario      | Vaquero/Corralero fijo en un predio. Ingresa pesajes y rutinas.       |
+| Cliente       | Pasante, comprador o estudiante con acceso de solo lectura.           |
 
 ---
 
@@ -456,18 +457,18 @@ El "Módulo de Métricas Zootécnicas Avanzadas" exige la implementación de las
 ### 6.2 Control de Acceso por Roles (RBAC)
 
 ```
-┌─────────────────┬─────────────┬──────────────┬──────────────┬──────────────┐
-│ RECURSO/ACCIÓN  │ ADMIN       │ VETERINARIO  │ OPERARIO     │ ESTUDIANTE   │
-├─────────────────┼─────────────┼──────────────┼──────────────┼──────────────┤
-│ Animales (CRUD) │ ✅ Completo  │ ✅ Leer/Editar│ ✅ Leer/Crear│ 👁️ Solo leer  │
-│ Eventos Sanit.  │ ✅ Completo  │ ✅ Completo   │ 👁️ Solo leer │ 👁️ Solo leer  │
-│ Tratamientos    │ ✅ Completo  │ ✅ Completo   │ 👁️ Solo leer │ 👁️ Solo leer  │
-│ Usuarios (CRUD) │ ✅ Completo  │ ❌ No accede  │ ❌ No accede │ ❌ No accede  │
-│ Reportes        │ ✅ Completo  │ ✅ Completo   │ 📊 Limitado  │ 👁️ Solo leer  │
-│ Configuración   │ ✅ Completo  │ ❌ No accede  │ ❌ No accede │ ❌ No accede  │
-│ Pesajes         │ ✅ Completo  │ ✅ Leer/Editar│ ✅ Completo  │ 👁️ Solo leer  │
-│ Genealogía      │ ✅ Completo  │ ✅ Leer/Editar│ 👁️ Solo leer │ 👁️ Solo leer  │
-└─────────────────┴─────────────┴──────────────┴──────────────┴──────────────┘
+┌─────────────────┬─────────────┬─────────────┬──────────────┬──────────────┬──────────────┐
+│ RECURSO/ACCIÓN  │ SUPER ADMIN │ PROPIETARIO │ VETERINARIO  │ OPERARIO     │ CLIENTE      │
+├─────────────────┼─────────────┼─────────────┼──────────────┼──────────────┼──────────────┤
+│ Animales (CRUD) │ ✅ Completo  │ ✅ Completo  │ ✅ Leer/Editar│ ✅ Leer/Crear│ 👁️ Solo leer  │
+│ Eventos Sanit.  │ ✅ Completo  │ ✅ Completo  │ ✅ Completo   │ 👁️ Solo leer │ 👁️ Solo leer  │
+│ Tratamientos    │ ✅ Completo  │ ✅ Completo  │ ✅ Completo   │ 👁️ Solo leer │ 👁️ Solo leer  │
+│ Usuarios (CRUD) │ ✅ Completo  │ ✅ Completo  │ ❌ No accede  │ ❌ No accede │ ❌ No accede  │
+│ Reportes        │ ✅ Completo  │ ✅ Completo  │ ✅ Completo   │ 📊 Limitado  │ 👁️ Solo leer  │
+│ Configuración   │ ✅ Completo  │ ✅ Limitado  │ ❌ No accede  │ ❌ No accede │ ❌ No accede  │
+│ Pesajes         │ ✅ Completo  │ ✅ Completo  │ ✅ Leer/Editar│ ✅ Completo  │ 👁️ Solo leer  │
+│ Genealogía      │ ✅ Completo  │ ✅ Completo  │ ✅ Leer/Editar│ 👁️ Solo leer │ 👁️ Solo leer  │
+└─────────────────┴─────────────┴─────────────┴──────────────┴──────────────┴──────────────┘
 ```
 
 - **Creación de Fincas**: Restringida estrictamente a SUPER_ADMIN y PROPIETARIO. Ningún otro rol puede insertar Predios.
@@ -562,9 +563,10 @@ Usuario {
   nombre          String
   email           String    @unique
   passwordHash    String
-  rol             Rol                              // Enum: ADMIN | VETERINARIO | OPERARIO | ESTUDIANTE
-  predioId        Int
+  rol             Rol                              // Enum: SUPER_ADMIN | PROPIETARIO | VETERINARIO | OPERARIO | CLIENTE
+  predioId        Int?
   activo          Boolean   @default(true)
+  estado          String    @default("PENDIENTE")
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 }
@@ -723,6 +725,7 @@ Cuando se genere código, seguir este orden de entrega:
 | 03 | 2026-06-18 | Modelo Datos (1.2) | Se implementó la Enmienda para generar el Código Único de Sistema Animal (CUI/CUSA) de forma automatizada en el formato BOV-AÑO-PREDIO-SECUENCIAL. | Arquitecto IA   |
 | 04 | 2026-06-26 | Sección 5.1 y 5.2  | Reversión total del tema claro (Blanco/Verde) al tema Dark Glassmorphism original, eliminando los fondos claros y exigiendo paneles translúcidos. | Usuario         |
 | 05 | 2026-06-27 | Sección 5.5 y 5.6  | Enmienda de Accesibilidad Visual (Light Mode Puro y contraste estricto text-gray-900) e inclusión de Módulo de Métricas Zootécnicas. | Usuario         |
+| 06 | 2026-07-01 | Varias             | Implementación de Generación PDF para CSMI, Flujo de Auto-Registro con Aprobación (estado en Usuario), Retorno de Tránsito, Aislamiento de Datos en Analíticas y Etiquetas de Baja en Genealogía. | Arquitecto IA   |
 
 ---
 

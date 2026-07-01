@@ -14,7 +14,7 @@ export const createMovimientoBatch = async (req: Request, res: Response, next: N
     if (!result.success) throw new ValidationError('Datos de lote inválidos', result.error);
 
     const data = await movimientoService.createBatch(result.data, req.user.sub, req.ip);
-    res.status(201).json({ success: true, data });
+    res.status(201).json({ success: true, count: result.data.animalIds.length, data });
   } catch (err) {
     next(err);
   }

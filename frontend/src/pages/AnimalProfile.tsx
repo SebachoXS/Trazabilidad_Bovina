@@ -33,6 +33,7 @@ export default function AnimalProfile() {
 
   const canAccessAdminVet = useCanAccess(['SUPER_ADMIN', 'PROPIETARIO', 'VETERINARIO']);
   const canAccessAllMod = useCanAccess(['SUPER_ADMIN', 'PROPIETARIO', 'VETERINARIO', 'OPERARIO']);
+  const canAccessAdminProp = useCanAccess(['SUPER_ADMIN', 'PROPIETARIO']);
 
   if (isLoading) {
     return (
@@ -109,7 +110,7 @@ export default function AnimalProfile() {
           Volver al Inventario
         </button>
         <div className="flex items-center gap-2 flex-wrap justify-end">
-          {canAccessAdminVet && (
+          {canAccessAdminProp && (
             <button 
               onClick={() => setIsMoveModalOpen(true)}
               disabled={animal.estado === 'EN_RETIRO'}
@@ -281,7 +282,24 @@ export default function AnimalProfile() {
               </div>
             )}
             
-            <div className="grid grid-cols-1 md:grid-cols-4 sm:grid-cols-2 gap-6 mt-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mt-6">
+              <div className="bg-white border border-gray-200 p-5 rounded-xl shadow-sm">
+                <p className="text-sm text-gray-500 font-medium">Propósito Productivo</p>
+                <p className="text-lg font-bold text-gray-950 mt-1">
+                  {(() => {
+                    const val = animal.proposito;
+                    if (!val) return 'No definido';
+                    const map: Record<string, string> = {
+                      'CARNE': 'Carne',
+                      'LECHE': 'Leche',
+                      'CRIA_GESTACION': 'Cría / Gestación',
+                      'REPRODUCTOR_SEMENTAL': 'Reproductor (Semental)',
+                      'DOBLE_PROPOSITO': 'Doble Propósito'
+                    };
+                    return map[val] || val;
+                  })()}
+                </p>
+              </div>
               <div className="bg-white border border-gray-200 p-5 rounded-xl shadow-sm">
                 <p className="text-sm text-gray-500 font-medium">Fecha de Nacimiento</p>
                 <p className="text-lg font-bold text-gray-950 mt-1">{animal.fechaNacimiento ? new Date(animal.fechaNacimiento).toLocaleDateString() : 'Desconocida'}</p>

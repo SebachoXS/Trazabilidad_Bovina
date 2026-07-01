@@ -50,7 +50,7 @@ enum Rol {
   PROPIETARIO   // Dueño legal del ganado y fincas Charolais.
   VETERINARIO   // Médico independiente. Cuenta única, multi-predio.
   OPERARIO      // Vaquero/Corralero fijo en un predio.
-  ESTUDIANTE    // Pasante con acceso de solo lectura.
+  CLIENTE       // Comprador o pasante con acceso de solo lectura.
 }
 
 enum Sexo {
@@ -60,6 +60,8 @@ enum Sexo {
 
 enum EstadoAnimal {
   ACTIVO        // En predio, sin restricciones
+  EN_RETIRO     // En periodo de retiro por tratamiento sanitario
+  EN_TRANSITO   // Enviado temporalmente a una feria o predio externo
   VENDIDO       // Egresado por venta
   MUERTO        // Fallecido
 }
@@ -170,13 +172,14 @@ model Usuario {
   propietarioId   Int?
   propietario     Propietario? @relation(fields: [propietarioId], references: [id])
 
-  // Relación 1:N para personal fijo (Operario / Estudiante atado a una finca)
+  // Relación 1:N para personal fijo (Operario / Cliente atado a una finca)
   predioId        Int?
   predio          Predio?      @relation(fields: [predioId], references: [id])
 
   // Relación N:M EXCLUSIVA para el VETERINARIO (Puede trabajar en múltiples predios)
   prediosAsignados Predio[]    @relation("VeterinariosEnPredio")
   activo       Boolean   @default(true)
+  estado       String    @default("PENDIENTE") // PENDIENTE, ACTIVO, RECHAZADO
   sesiones           SesionUsuario[]
   eventosCreados     EventoSanitario[]  @relation("EventoCreador")
   pesajesCreados     Pesaje[]           @relation("PesajeCreador")
@@ -1001,7 +1004,7 @@ export const createUsuarioSchema = z.object({
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
       'Debe contener mayúscula, minúscula, número y carácter especial.'
     ),
-  rol: z.enum(['ADMIN', 'VETERINARIO', 'OPERARIO', 'ESTUDIANTE']),
+  rol: z.enum(['SUPER_ADMIN', 'PROPIETARIO', 'VETERINARIO', 'OPERARIO', 'CLIENTE']),
   predioId: z.number().int().positive(),
 });
 ```
@@ -1250,7 +1253,7 @@ ALGORITMO (MovimientoService.create):
 
 ### RN-011 — Gestión y Vinculación de Usuarios (NUEVO)
 ```text
-1. Creación de Personal Fijo: El `PROPIETARIO` puede crear cuentas nuevas con rol `OPERARIO` o `ESTUDIANTE`, las cuales quedarán atadas permanentemente al `predioId` especificado.
+1. Creación de Personal Fijo: El `PROPIETARIO` puede crear cuentas nuevas con rol `OPERARIO` o `CLIENTE`, las cuales quedarán atadas permanentemente al `predioId` especificado.
 2. Vinculación de Veterinarios: El `PROPIETARIO` NO crea cuentas de veterinarios. Envía una invitación por email a través del sistema. Si el `VETERINARIO` ya existe (cuenta única global), el sistema añade el predio del Propietario a la lista de `prediosAsignados` del Veterinario.
 3. Selector de Entorno: Al hacer Login, si el usuario autenticado es un `VETERINARIO` y tiene múltiples `prediosAsignados`, el sistema debe exigirle que seleccione sobre qué predio va a operar en esa sesión específica para no mezclar datos clínicos de diferentes clientes.
    PROTECCIÓN MULTI-TENANT: El backend DEBE filtrar la lista de predios asignados con `deletedAt IS NULL` para evitar que los veterinarios ingresen a fincas "fantasma".
@@ -1419,7 +1422,7 @@ REGLAS DE PROTECCIÓN:
   2. Componente `RoleGuard`: 
      - Componente envolvente que bloquea el renderizado de rutas (ej: /eventos-lote) y redirige a '/dashboard' si el rol no tiene permisos.
   3. Estado "Solo Lectura": 
-     - Si el rol es ESTUDIANTE, se restringe globalmente el acceso a acciones mutativas a través de la interfaz.
+     - Si el rol es CLIENTE, se restringe globalmente el acceso a acciones mutativas a través de la interfaz.
 ```
 
 ---

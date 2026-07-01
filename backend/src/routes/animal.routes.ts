@@ -14,7 +14,9 @@ import {
   getHojaDeVida,
   getHojaDeVidaByCodigo,
   aprobarAltaAnimal,
-  rechazarAltaAnimal
+  rechazarAltaAnimal,
+  darDeBajaAnimal,
+  retornarAnimal
 } from '../controllers/animal.controller';
 import { registrarDestete } from '../controllers/pesaje.controller';
 import { authMiddleware } from '../middlewares/auth.middleware';
@@ -28,19 +30,19 @@ animalRouter.use(authMiddleware);
 // GET /animales - Listar con filtros (Todos excepto ESTUDIANTE pueden ver full, ESTUDIANTE ve, pero RBAC general lo permite)
 animalRouter.get('/', getAnimales);
 
-// POST /animales - Crear (ADMIN, VETERINARIO, OPERARIO)
-animalRouter.post('/', rbacMiddleware(['SUPER_ADMIN', 'VETERINARIO', 'OPERARIO']), createAnimal);
+// POST /animales - Crear (ADMIN, PROPIETARIO, VETERINARIO, OPERARIO)
+animalRouter.post('/', rbacMiddleware(['SUPER_ADMIN', 'PROPIETARIO', 'VETERINARIO', 'OPERARIO']), createAnimal);
 
 // Hoja de Vida
-animalRouter.get('/:id/hoja-de-vida', rbacMiddleware(['SUPER_ADMIN', 'VETERINARIO', 'OPERARIO', 'CLIENTE']), getHojaDeVida);
-animalRouter.get('/codigo/:codigoVisual/hoja-de-vida', rbacMiddleware(['SUPER_ADMIN', 'VETERINARIO', 'OPERARIO', 'CLIENTE']), getHojaDeVidaByCodigo);
+animalRouter.get('/:id/hoja-de-vida', rbacMiddleware(['SUPER_ADMIN', 'PROPIETARIO', 'VETERINARIO', 'OPERARIO', 'CLIENTE']), getHojaDeVida);
+animalRouter.get('/codigo/:codigoVisual/hoja-de-vida', rbacMiddleware(['SUPER_ADMIN', 'PROPIETARIO', 'VETERINARIO', 'OPERARIO', 'CLIENTE']), getHojaDeVidaByCodigo);
 
 // Leer un animal por ID
-animalRouter.get('/:id', rbacMiddleware(['SUPER_ADMIN', 'VETERINARIO', 'OPERARIO', 'CLIENTE']), getAnimalById);
+animalRouter.get('/:id', rbacMiddleware(['SUPER_ADMIN', 'PROPIETARIO', 'VETERINARIO', 'OPERARIO', 'CLIENTE']), getAnimalById);
 
-// Aprobaciones (Solo ADMIN)
-animalRouter.patch('/:id/aprobar-alta', rbacMiddleware(['SUPER_ADMIN']), aprobarAltaAnimal);
-animalRouter.patch('/:id/rechazar-alta', rbacMiddleware(['SUPER_ADMIN']), rechazarAltaAnimal);
+// Aprobaciones (ADMIN, PROPIETARIO)
+animalRouter.patch('/:id/aprobar-alta', rbacMiddleware(['SUPER_ADMIN', 'PROPIETARIO']), aprobarAltaAnimal);
+animalRouter.patch('/:id/rechazar-alta', rbacMiddleware(['SUPER_ADMIN', 'PROPIETARIO']), rechazarAltaAnimal);
 
 // GET /animales/codigo/:codigoVisual
 animalRouter.get('/codigo/:codigoVisual', getAnimalByCodigoVisual);
@@ -53,7 +55,13 @@ animalRouter.post('/:animalId/pesajes/destete', rbacMiddleware(['SUPER_ADMIN', '
 // PATCH /animales/:id - Actualizar (ADMIN, VETERINARIO)
 animalRouter.patch('/:id', rbacMiddleware(['SUPER_ADMIN', 'VETERINARIO']), updateAnimal);
 
-// DELETE /animales/:id - Eliminar (Soft delete) (ADMIN)
-animalRouter.delete('/:id', rbacMiddleware(['SUPER_ADMIN']), deleteAnimal);
+// DELETE /animales/:id - Eliminar (Soft delete/Hard Delete) (ADMIN, PROPIETARIO)
+animalRouter.delete('/:id', rbacMiddleware(['SUPER_ADMIN', 'PROPIETARIO']), deleteAnimal);
+
+// PUT /animales/:id/baja - Dar de baja (Soft delete avanzado con motivo) (ADMIN, PROPIETARIO)
+animalRouter.put('/:id/baja', rbacMiddleware(['SUPER_ADMIN', 'PROPIETARIO']), darDeBajaAnimal);
+
+// PATCH /animales/:id/retorno - Retornar de tránsito (ADMIN, PROPIETARIO)
+animalRouter.patch('/:id/retorno', rbacMiddleware(['SUPER_ADMIN', 'PROPIETARIO']), retornarAnimal);
 
 export default animalRouter;
