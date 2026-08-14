@@ -11,7 +11,10 @@ import { ValidationError } from '../types/errors';
 export const createPesaje = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result = pesajeCreateSchema.safeParse(req.body);
-    if (!result.success) throw new ValidationError('Datos inválidos', result.error);
+    if (!result.success) {
+      console.error('Validation Error for Pesaje:', JSON.stringify(result.error, null, 2));
+      throw new ValidationError('Datos inválidos', result.error);
+    }
 
     const data = await pesajeService.create(result.data, req.user.sub, req.ip);
     res.status(201).json({ success: true, data });

@@ -15,8 +15,8 @@ pesajeRouter.use(authMiddleware);
 // GET /pesajes - Leer pesajes (ADMIN, VETERINARIO, OPERARIO, ESTUDIANTE)
 pesajeRouter.get('/', rbacMiddleware(['SUPER_ADMIN', 'VETERINARIO', 'OPERARIO', 'CLIENTE']), getPesajes);
 
-// POST /pesajes - Crear pesajes (ADMIN, VETERINARIO, OPERARIO)
-pesajeRouter.post('/', rbacMiddleware(['SUPER_ADMIN', 'VETERINARIO', 'OPERARIO']), createPesaje);
+// POST /pesajes - Crear pesajes (ADMIN, PROPIETARIO, VETERINARIO, OPERARIO)
+pesajeRouter.post('/', rbacMiddleware(['SUPER_ADMIN', 'PROPIETARIO', 'VETERINARIO', 'OPERARIO']), createPesaje);
 
 // DELETE /pesajes/:id - Eliminar pesaje (ADMIN)
 pesajeRouter.delete('/:id', rbacMiddleware(['SUPER_ADMIN']), deletePesaje);

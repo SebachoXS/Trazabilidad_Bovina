@@ -82,8 +82,15 @@ export function WeighingModal({ animalId, isOpen, onClose }: WeighingModalProps)
     try {
       setGlobalError(null);
       
+      const payload = {
+        ...data,
+        peso: parseFloat(data.peso as any),
+        condicionCorporal: data.condicionCorporal ? parseFloat(data.condicionCorporal as any) : undefined,
+        fecha: new Date(data.fecha).toISOString(), // Asegurar formato DateTime
+      };
+
       const cleanData = Object.fromEntries(
-        Object.entries(data).map(([k, v]) => [k, v === '' ? undefined : v])
+        Object.entries(payload).map(([k, v]) => [k, v === '' ? undefined : v])
       ) as any;
 
       await mutateAsync(cleanData);

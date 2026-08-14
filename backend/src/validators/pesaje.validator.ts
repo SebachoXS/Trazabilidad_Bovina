@@ -7,19 +7,19 @@ import { z } from 'zod';
 
 export const pesajeCreateSchema = z.object({
   fecha: z.coerce.date({ required_error: 'La fecha del pesaje es obligatoria.' }),
-  peso: z
+  peso: z.coerce
     .number({ required_error: 'El peso es obligatorio.' })
     .positive('El peso debe ser positivo.')
     .max(2000, 'El peso no puede superar los 2000 kg.'),
-  condicionCorporal: z
+  condicionCorporal: z.coerce
     .number()
     .min(1, 'Mínimo 1.0').max(5, 'Máximo 5.0')
     .multipleOf(0.5, 'Valores en pasos de 0.5 (1.0, 1.5, 2.0, ...)')
     .optional()
     .nullable(),
   metodoMedicion: z.enum(['BASCULA', 'CINTA_BOVINOMETRICA', 'CINTA_ZOOMETRICA']).optional().nullable(),
-  perimetroToracico: z.number().positive().optional().nullable(),
-  longitudCorporal: z.number().positive().optional().nullable(),
+  perimetroToracico: z.coerce.number().positive().optional().nullable(),
+  longitudCorporal: z.coerce.number().positive().optional().nullable(),
   observaciones: z.string().max(500).optional().nullable(),
   animalId: z.number().int().positive('El ID del animal es obligatorio.'),
 });

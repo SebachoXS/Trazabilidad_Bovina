@@ -110,7 +110,7 @@ export default function AnimalProfile() {
           Volver al Inventario
         </button>
         <div className="flex items-center gap-2 flex-wrap justify-end">
-          {canAccessAdminProp && (
+          {/* {canAccessAdminProp && (
             <button 
               onClick={() => setIsMoveModalOpen(true)}
               disabled={animal.estado === 'EN_RETIRO'}
@@ -119,7 +119,7 @@ export default function AnimalProfile() {
             >
               <Truck className="w-4 h-4 mr-2" /> Movimiento
             </button>
-          )}
+          )} */}
           {canAccessAdminVet && (
             <button onClick={() => setIsReproModalOpen(true)} className="bg-white border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors px-4 py-2 rounded-lg text-sm font-medium flex items-center text-gray-700">
               <Baby className="w-4 h-4 mr-2" /> Reproducción
@@ -238,12 +238,12 @@ export default function AnimalProfile() {
         >
           Pesajes & Destete
         </button>
-        <button 
+        {/* <button 
           onClick={() => setActiveTab('movimientos')}
           className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${activeTab === 'movimientos' ? 'bg-emerald-50 text-emerald-800 border-b-2 border-emerald-600' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}`}
         >
           Movimientos
-        </button>
+        </button> */}
         {animal.sexo === 'HEMBRA' && (
           <button 
             onClick={() => setActiveTab('reproduccion')}

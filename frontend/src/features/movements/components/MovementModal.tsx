@@ -63,7 +63,7 @@ export function MovementModal({ animalId, isOpen, onClose }: MovementModalProps)
     queryFn: () => adminService.getPredios(),
   });
 
-  const { data: animalData } = useQuery({
+  const { data: animalData, isLoading: isLoadingAnimal, isError: isErrorAnimal } = useQuery({
     queryKey: ['animal', animalId],
     queryFn: () => animalsService.getAnimalById(animalId as number),
     enabled: !!animalId
@@ -173,9 +173,11 @@ export function MovementModal({ animalId, isOpen, onClose }: MovementModalProps)
               <Select
                 label="Predio Origen"
                 disabled
-                options={animalData?.data?.predioId ? [
-                  { value: animalData.data.predioId.toString(), label: animalData.data.predio?.nombre || `Predio Actual (${animalData.data.predioId})` }
-                ] : [{ value: '', label: 'Cargando origen...' }]}
+                options={
+                  isLoadingAnimal ? [{ value: '', label: 'Cargando origen...' }] :
+                  isErrorAnimal || !animalData?.data?.predioId ? [{ value: '', label: 'No se pudo cargar el origen' }] :
+                  [{ value: animalData.data.predioId.toString(), label: animalData.data.predio?.nombre || `Predio Actual (${animalData.data.predioId})` }]
+                }
                 {...register('predioOrigenId', { valueAsNumber: true })}
                 error={errors.predioOrigenId?.message}
               />

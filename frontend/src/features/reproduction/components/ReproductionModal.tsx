@@ -14,7 +14,7 @@ import { Input } from '../../../components/ui/Input';
 import { Select } from '../../../components/ui/Select';
 import { Textarea } from '../../../components/ui/Textarea';
 import { Button } from '../../../components/ui/Button';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { animalsService } from '../../animals/api/animals.service';
 
 // Expresión regular para el Código Visual de 10 dígitos (CONSTITUTION §10.1)
@@ -74,10 +74,37 @@ export function ReproductionModal({ animalId, isOpen, onClose }: ReproductionMod
   const { mutateAsync, isPending } = useCreateReproductionEvent(animalId);
   const [globalError, setGlobalError] = useState<string | null>(null);
 
-  const { data: torosResponse } = useQuery({
-    queryKey: ['animales', 'padres'],
-    queryFn: () => animalsService.getAnimales(1, 100, { sexo: 'MACHO' }),
+  const { data: hojaDeVidaData } = useQuery({
+    queryKey: ['animal', animalId],
+    queryFn: () => animalsService.getHojaDeVida(animalId as number),
+    enabled: !!animalId,
   });
+  const animalActual = hojaDeVidaData?.data?.animal;
+
+  const [candidatos, setCandidatos] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    const fetchCandidatos = async () => {
+      if (!animalActual?.predioId) return;
+      try {
+        const res = await animalsService.getAnimales(1, 1000, { predioId: animalActual.predioId });
+        const todosLosAnimales = res.data || [];
+        
+        const sexoActual = animalActual.sexo?.trim().toUpperCase();
+        const filtrados = todosLosAnimales.filter((c: any) => 
+          c.id !== animalActual.id && 
+          c.sexo?.trim().toUpperCase() !== sexoActual &&
+          c.estado === 'ACTIVO'
+        );
+        
+        setCandidatos(filtrados);
+      } catch (error) {
+        console.error("Error al cargar candidatos:", error);
+      }
+    };
+    
+    fetchCandidatos();
+  }, [animalActual]);
 
   const {
     register,
@@ -100,10 +127,10 @@ export function ReproductionModal({ animalId, isOpen, onClose }: ReproductionMod
 
   const torosOptions = [
     { value: '', label: 'Ninguno / Sin registro' },
-    ...(torosResponse?.data?.map(t => ({
+    ...candidatos.map(t => ({
       value: t.id.toString(),
       label: `${t.codigoVisual} ${t.nombre ? `(${t.nombre})` : ''}`
-    })) || []),
+    })),
     { value: '-1', label: 'Otro / No Registrado (Ingreso Manual)' }
   ];
 
@@ -197,7 +224,7 @@ export function ReproductionModal({ animalId, isOpen, onClose }: ReproductionMod
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-2">
                 <Select
-                  label="ID del Toro (Opcional)"
+                  label={animalActual?.sexo?.trim().toUpperCase() === 'HEMBRA' ? 'ID del Toro / Macho (Opcional)' : 'ID de la Vaca / Hembra (Opcional)'}
                   options={torosOptions}
                   {...register('toroId')}
                   error={errors.toroId?.message}
@@ -205,8 +232,8 @@ export function ReproductionModal({ animalId, isOpen, onClose }: ReproductionMod
                 {toroIdSeleccionado === -1 && (
                   <div className="mt-2 animate-fade-in">
                     <Input
-                      label="Nombre de Toro No Registrado"
-                      placeholder="Ej: Toro Importado XYZ"
+                      label={animalActual?.sexo?.trim().toUpperCase() === 'HEMBRA' ? 'Nombre de Toro No Registrado' : 'Nombre de Vaca No Registrada'}
+                      placeholder={animalActual?.sexo?.trim().toUpperCase() === 'HEMBRA' ? 'Ej: Toro Importado XYZ' : 'Ej: Vaca Importada XYZ'}
                       {...register('toroManual')}
                     />
                   </div>
